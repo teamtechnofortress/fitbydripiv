@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50" viewBox="0 0 200 50">
+  <rect width="200" height="50" fill="white" fill-opacity="0"/>
+  <text x="100" y="35" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#111827" text-anchor="middle">FitByShot</text>
+</svg>
