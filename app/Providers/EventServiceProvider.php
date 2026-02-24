@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Providers;
+
+use App\Events\Reactivate;
+use App\Events\ExamHandler;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
+use App\Listeners\NotifyExamHandler;
+use App\Listeners\LogSuccessfulLogin;
+use Illuminate\Support\Facades\Event;
+use App\Listeners\LogSuccessfulLogout;
+use Illuminate\Auth\Events\Registered;
+use App\Listeners\NotifyUserReactivated;
+use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+
+class EventServiceProvider extends ServiceProvider
+{
+    /**
+     * The event to listener mappings for the application.
+     *
+     * @var array<class-string, array<int, class-string>>
+     */
+    protected $listen = [
+        Registered::class => [
+            SendEmailVerificationNotification::class,
+        ],
+        Reactivate::class => [
+            NotifyUserReactivated::class,
+        ],
+        ExamHandler::class => [
+            NotifyExamHandler::class,
+        ],
+        Login::class => [
+            LogSuccessfulLogin::class,
+        ],
+        Logout::class => [
+            LogSuccessfulLogout::class,
+        ],
+    ];
+
+    /**
+     * Register any events for your application.
+     */
+    public function boot(): void
+    {
+        //
+    }
+
+    /**
+     * Determine if events and listeners should be automatically discovered.
+     */
+    public function shouldDiscoverEvents(): bool
+    {
+        return false;
+    }
+}
