@@ -61,7 +61,13 @@ class CmsAdminController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => CmsProduct::with('category')->orderBy('display_order')->get()
+            'data' => CmsProduct::with([
+                'category',
+                'researchLinks',
+                'pricingOptions',
+                'faqs',
+                'subscriptionDiscounts',
+            ])->orderBy('display_order')->get()
         ]);
     }
 
