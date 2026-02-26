@@ -9,7 +9,7 @@
   <link rel="stylesheet" type="text/css" href="/loader.css" />
   <script type="module" crossorigin src="/assets/index.bdcf08a6.js"></script>
   <link rel="stylesheet" href="/assets/index.cc6ec66e.css">
-</head>
+</head> 
 
 <body>
   <div id="app">
