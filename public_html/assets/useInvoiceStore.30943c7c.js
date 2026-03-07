@@ -1,1 +1,0 @@
-import{az as o}from"./index.10c265a9.js";import{a as t}from"./axios.689529aa.js";const s=o("InvoiceStore",{actions:{fetchInvoices(e){return t.get("apps/invoices",{params:e})},fetchInvoice(e){return t.get(`/apps/invoices/${e}`)},fetchClients(){return t.get("/apps/invoice/clients")}}});export{s as u};
