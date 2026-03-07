@@ -19,9 +19,6 @@ class AuthController extends BaseController
     //
     public function signin(Request $request)
     {
-
-        Auth::logout();
-
         // Validate email and password
         $validator = Validator::make($request->all(), [
             'email'    => ['required', 'email',
@@ -46,16 +43,25 @@ class AuthController extends BaseController
             ], 401);
         }
 
-        // Get the authenticated user
         $user = Auth::user();
 
-        // $success['user'] = $user->load('personalInfo');
+        if ($user->two_factor_confirmed_at) {
+            Auth::logout();
+
+            return response()->json([
+                'requires_2fa' => true,
+                'email' => $user->email,
+            ]);
+        }
+
         $success['token'] =  $user->createToken('MyAuthApp')->plainTextToken;
         $success['user'] = $user;
         $success['userAbilities'][] = [
             'action' => 'manage',
             'subject' => 'all'
         ];
+
+        Auth::logout();
 
         return $this->sendResponse($success, 'User login');
     }

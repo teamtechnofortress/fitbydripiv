@@ -8,6 +8,9 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\API\AuthController;
+use App\Http\Controllers\API\TwoFactorController;
+use App\Http\Controllers\API\Auth\EmailVerificationController;
+use App\Http\Controllers\API\Auth\PasswordResetController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MarketingController;
@@ -36,6 +39,30 @@ Route::prefix('v1')->group( function(){
     Route::post('auth/login',    [AuthController::class, 'signin'])->name('login');
     Route::post('auth/logout',   [AuthController::class, 'signout'])->name('logout');
     Route::post('auth/register', [AuthController::class, 'signup']);
+    Route::post('auth/forgot-password', [PasswordResetController::class, 'sendResetLink'])
+        ->middleware('throttle:5,1')
+        ->name('auth.forgot-password');
+    Route::post('auth/reset-password', [PasswordResetController::class, 'resetPassword'])
+        ->middleware('throttle:5,1')
+        ->name('auth.reset-password');
+    Route::post('auth/verify-2fa', [TwoFactorController::class, 'verify'])->name('auth.verify-2fa');
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('auth/2fa-status', [TwoFactorController::class, 'status'])->name('auth.2fa-status');
+        Route::post('auth/enable-2fa', [TwoFactorController::class, 'enable'])->name('auth.enable-2fa');
+        Route::post('auth/confirm-2fa', [TwoFactorController::class, 'confirm'])->name('auth.confirm-2fa');
+        Route::post('auth/disable-2fa', [TwoFactorController::class, 'disable'])->name('auth.disable-2fa');
+        Route::post('auth/regenerate-2fa', [TwoFactorController::class, 'regenerate'])->name('auth.regenerate-2fa');
+
+        Route::get('auth/email/status', [EmailVerificationController::class, 'status'])->name('auth.email-status');
+        Route::post('auth/email/send-verification', [EmailVerificationController::class, 'send'])
+            ->middleware('throttle:email-verification')
+            ->name('auth.email-send');
+    });
+
+    Route::get('auth/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('auth.email-verify');
 
     //Patient
     Route::get('get/patient-by-name', [PatientController::class, 'getPatientByName'])->name('getPatientByName');
@@ -69,7 +96,7 @@ Route::prefix('v1')->group( function(){
         Route::post("auth/logout",         [AuthController::class, 'signout'])->name('logout');
         Route::get("get/profile",          [AuthController::class, 'getProfile'])->name('getProfile');
         Route::post("save/profile",        [AuthController::class, 'saveProfile'])->name('saveProfile');
-        Route::post("auth/reset-password", [AuthController::class, 'resetPassword'])->name('resetPassword');
+        Route::post("auth/change-password", [AuthController::class, 'resetPassword'])->name('resetPassword');
         Route::post("auth/confirm-password", [AuthController::class, 'confirmPassword'])->name('confirmPassword');
         Route::post("remove-account",      [AuthController::class, 'removeAccount'])->name('removeAccount');
         Route::post("user/delete",         [AuthController::class, 'userRemove'])->name('userRemove');

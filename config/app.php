@@ -43,6 +43,7 @@ return [
     */
 
     'debug' => (bool) env('APP_DEBUG', false),
+    
 
     /*
     |--------------------------------------------------------------------------
@@ -184,5 +185,15 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
+  /*
+    |--------------------------------------------------------------------------
+    | Frontend Url
+    |--------------------------------------------------------------------------
+    |
+    */
+
+
+
+    'frontend_url' => env('APP_FRONTEND_URL', 'http://localhost:3000'),
 
 ];

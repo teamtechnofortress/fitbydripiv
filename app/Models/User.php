@@ -2,17 +2,20 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Traits\Notifiable;
 use App\Models\LoginHistory;
 use App\Models\StaffPayroll;
-use Laravel\Sanctum\HasApiTokens;
+use App\Traits\Notifiable;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Laravel\Fortify\Contracts\TwoFactorAuthenticationProvider;
+use Laravel\Fortify\Fortify;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * The attributes that are mass assignable.
@@ -55,6 +58,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -65,10 +70,12 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'two_factor_confirmed_at' => 'datetime',
     ];
 
-    public function personalInfo(){
-        return $this->hasOne('App\Models\PersonalInfo', 'userId', 'id');
+    public function personalInfo()
+    {
+        return $this->hasOne('App\\Models\\PersonalInfo', 'userId', 'id');
     }
 
     public function loginHistories()
@@ -76,8 +83,25 @@ class User extends Authenticatable
         return $this->hasMany(LoginHistory::class);
     }
 
-    public function staffpayroll(){        
+    public function staffpayroll()
+    {
         return $this->hasOne(StaffPayroll::class, 'staff_id', 'id');
     }
 
+    /**
+     * Validate the provided OTP against the stored two factor secret.
+     */
+    public function validateTwoFactorCode(string $code): bool
+    {
+        if (! $this->two_factor_secret || ! $code) {
+            return false;
+        }
+
+        $provider = app(TwoFactorAuthenticationProvider::class);
+
+        return $provider->verify(
+            Fortify::currentEncrypter()->decrypt($this->two_factor_secret),
+            $code
+        );
+    }
 }
