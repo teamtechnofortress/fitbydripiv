@@ -1,0 +1,24 @@
+RewriteEngine On
+DirectoryIndex index.php
+
+# 🔒 Block direct access to backend and frontend folders
+RewriteRule ^backend/ - [F,L]
+RewriteRule ^frontend/ - [F,L]
+
+# 🔐 Block sensitive files
+<FilesMatch "\.(env|log|ini|sh|sql)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# ⚡ API requests → Laravel (index.php)
+RewriteCond %{REQUEST_URI} ^/api [NC]
+RewriteRule ^ index.php [L]
+
+# 📁 Existing files → Serve directly (allows frontend assets)
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# 🎨 Everything else → Laravel serves Vue index.html
+RewriteRule ^ index.php [L]
