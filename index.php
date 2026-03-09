@@ -10,10 +10,10 @@ if (file_exists($maintenance = __DIR__.'/backend/storage/framework/maintenance.p
     require $maintenance;
 }
 
-// Autoloader
+// Autoloader - points to backend/vendor
 require __DIR__.'/backend/vendor/autoload.php';
 
-// Bootstrap
+// Bootstrap - points to backend/bootstrap
 $app = require_once __DIR__.'/backend/bootstrap/app.php';
 
 $kernel = $app->make(Kernel::class);
