@@ -15,9 +15,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        if(PHP_OS != 'WINNT'){
-            app()->usePublicPath(base_path('public_html'));
-        }
+        // if(PHP_OS != 'WINNT'){
+        //     app()->usePublicPath(base_path('public_html'));
+        // }
     }
 
     /**
