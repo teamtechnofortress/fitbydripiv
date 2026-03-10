@@ -11,6 +11,8 @@
 
 /vendor/
 
+/backend/*
+
 storage/*.key
 /storage/app/*
 !/storage/app/.gitignore
