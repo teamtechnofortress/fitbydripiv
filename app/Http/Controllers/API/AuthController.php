@@ -97,6 +97,41 @@ class AuthController extends BaseController
         return $this->sendResponse($success, 'User created successfully.');
     }
 
+    /**
+     * Lightweight registration endpoint for basic onboarding flows.
+     */
+    public function simpleSignup(Request $request)
+    {
+        $payload = $request->validate([
+            'firstName' => ['required', 'string', 'max:255'],
+            'lastName'  => ['required', 'string', 'max:255'],
+            'email'     => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password'  => ['required', 'string', 'min:8'],
+        ]);
+
+        $user = User::create([
+            'firstName' => $payload['firstName'],
+            'lastName'  => $payload['lastName'],
+            'email'     => $payload['email'],
+            'password'  => Hash::make($payload['password']),
+            'role'      => 'admin',
+            'deleted'   => 0,
+        ]);
+
+        $response = [
+            'user' => $user,
+            'token' => $user->createToken('MyAuthApp')->plainTextToken,
+            'userAbilities' => [
+                [
+                    'action' => 'manage',
+                    'subject' => 'all',
+                ],
+            ],
+        ];
+
+        return $this->sendResponse($response, 'User registered successfully.');
+    }
+
     public function signout(Request $request)
     {        
         $user = $request->user();

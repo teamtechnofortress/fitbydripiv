@@ -39,6 +39,7 @@ Route::prefix('v1')->group( function(){
     Route::post('auth/login',    [AuthController::class, 'signin'])->name('login');
     Route::post('auth/logout',   [AuthController::class, 'signout'])->name('logout');
     Route::post('auth/register', [AuthController::class, 'signup']);
+    Route::post('auth/simple-register', [AuthController::class, 'simpleSignup']);
     Route::post('auth/forgot-password', [PasswordResetController::class, 'sendResetLink'])
         ->middleware('throttle:5,1')
         ->name('auth.forgot-password');
