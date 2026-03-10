@@ -103,3 +103,16 @@ yarn-error.log*
 
 /uploads/*
 !/uploads/.gitkeep
+
+
+
+*.bak
+
+.DS_Store
+**/.DS_Store
+*.tmp
+*.temp
+.cache
+
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
