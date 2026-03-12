@@ -49,6 +49,8 @@ class StaffController extends BaseController
             ...$request->all(),
             'role' => (strtolower($request->role) == 'admin' ? 'admin' : 'staff'),
             'password' => Hash::make("12345678"),//<-- password setup constantly
+            'profile_step' => 5,
+            'profile_completed_at' => now(),
         ]);
 
         $staffList = User::where(['deleted' => 0])->get();

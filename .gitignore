@@ -39,6 +39,7 @@ auth.json
 /dist/
 /.vite/
 
+/public/*
 /public/build/
 /public/hot
 

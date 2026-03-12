@@ -47,7 +47,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'signature',
         'status',
         'password_reset',
-        'require_signature'
+        'require_signature',
+        'profile_step',
+        'profile_completed_at',
     ];
 
     /**
@@ -71,6 +73,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'two_factor_confirmed_at' => 'datetime',
+        'profile_completed_at' => 'datetime',
     ];
 
     public function personalInfo()

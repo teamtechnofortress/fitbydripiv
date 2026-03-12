@@ -38,6 +38,8 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => Hash::make($input['password']),
+            'profile_step' => 2,
+            'profile_completed_at' => null,
         ]);
     }
 }

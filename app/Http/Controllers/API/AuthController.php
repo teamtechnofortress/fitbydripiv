@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\API\BaseController as BaseController;
 
 class AuthController extends BaseController
@@ -32,11 +33,26 @@ class AuthController extends BaseController
         ]);
 
         if($validator->fails()){
+            Log::warning('Auth validation failed', [
+                'email' => $request->email,
+                'errors' => $validator->errors()->toArray(),
+                'ip' => $request->ip(),
+            ]);
             return $this->sendError('Error validation', $validator->errors(), 400);
         }
 
+        Log::info('Auth login attempt', [
+            'email' => $request->email,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
         // Attempt login
         if (!Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+            Log::warning('Auth login failed', [
+                'email' => $request->email,
+                'ip' => $request->ip(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid email or password',
@@ -47,6 +63,10 @@ class AuthController extends BaseController
 
         if ($user->two_factor_confirmed_at) {
             Auth::logout();
+            Log::info('Auth login requires 2FA', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+            ]);
 
             return response()->json([
                 'requires_2fa' => true,
@@ -60,6 +80,11 @@ class AuthController extends BaseController
             'action' => 'manage',
             'subject' => 'all'
         ];
+
+        Log::info('Auth login success', [
+            'user_id' => $user->id,
+            'email' => $user->email,
+        ]);
 
         Auth::logout();
 
@@ -85,8 +110,11 @@ class AuthController extends BaseController
             'lastName'    => $request->lastName,
             'email'       => $request->email,
             'password'    => Hash::make($request->password),
-            'role' => "admin",
-            'deleted' => 0,
+            'role'        => "admin",
+            'deleted'     => 0,
+            'status'      => 1,
+            'profile_step' => 2,
+            'profile_completed_at' => null,
         ]);
 
 
@@ -114,8 +142,11 @@ class AuthController extends BaseController
             'lastName'  => $payload['lastName'],
             'email'     => $payload['email'],
             'password'  => Hash::make($payload['password']),
-            'role'      => 'admin',
+            'role'      => 'staff',
             'deleted'   => 0,
+            'status'    => 1,
+            'profile_step' => 2,
+            'profile_completed_at' => null,
         ]);
 
         $response = [
@@ -285,6 +316,8 @@ class AuthController extends BaseController
                 'isCompany'    => 0,
                 'created_at'   => now(),
                 'deleted'      => 0,
+                'profile_step' => 2,
+                'profile_completed_at' => null,
             ];
         }
         DB::table('users')->insert($insertData);

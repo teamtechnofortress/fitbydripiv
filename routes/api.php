@@ -11,6 +11,7 @@ use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\TwoFactorController;
 use App\Http\Controllers\API\Auth\EmailVerificationController;
 use App\Http\Controllers\API\Auth\PasswordResetController;
+use App\Http\Controllers\API\ProfileProgressController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\MarketingController;
@@ -92,6 +93,14 @@ Route::prefix('v1')->group( function(){
 
     //Staff
     Route::group(['middleware' => ['auth:sanctum', 'check.deleted']], function() {
+        Route::get('profile-progress', [ProfileProgressController::class, 'show'])->name('profile-progress.show');
+        Route::get('profile-progress/step/{step}', [ProfileProgressController::class, 'showStep'])->name('profile-progress.step.show');
+        Route::post('profile-progress/step-2', [ProfileProgressController::class, 'saveStep2'])->name('profile-progress.step2');
+        Route::post('profile-progress/step-3', [ProfileProgressController::class, 'saveStep3'])->name('profile-progress.step3');
+        Route::post('profile-progress/step-4', [ProfileProgressController::class, 'saveStep4'])->name('profile-progress.step4');
+        Route::post('profile-progress/step-5', [ProfileProgressController::class, 'saveStep5'])->name('profile-progress.step5');
+        Route::post('profile-progress/skip', [ProfileProgressController::class, 'skip'])->name('profile-progress.skip');
+
         Route::get("patients",             [PatientController::class, 'getPatients'])->name('getPatients');
 
         Route::post("auth/logout",         [AuthController::class, 'signout'])->name('logout');

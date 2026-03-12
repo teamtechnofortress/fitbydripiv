@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FitByDrip Web Application</title>
   <link rel="stylesheet" type="text/css" href="/loader.css" />
-  <script type="module" crossorigin src="/assets/index.7b1f15dd.js"></script>
+  <script type="module" crossorigin src="/assets/index.878fa7d1.js"></script>
   <link rel="stylesheet" href="/assets/index.e82a1d16.css">
 </head> 
 
