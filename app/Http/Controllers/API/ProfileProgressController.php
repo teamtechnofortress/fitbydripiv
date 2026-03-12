@@ -137,8 +137,6 @@ class ProfileProgressController extends Controller
             'payment_method' => ['nullable', 'string', 'max:100'],
             'bank' => ['nullable', 'string', 'max:255'],
             'routing' => ['nullable', 'string', 'max:100'],
-            'signature' => ['nullable', 'string'],
-            'require_signature' => ['nullable', 'boolean'],
         ]);
 
         $updates = [
@@ -148,8 +146,6 @@ class ProfileProgressController extends Controller
             'payment_method' => $validated['payment_method'] ?? null,
             'bank' => $validated['bank'] ?? null,
             'routing' => $validated['routing'] ?? null,
-            'signature' => $validated['signature'] ?? null,
-            'require_signature' => $validated['require_signature'] ?? $user->require_signature ?? 0,
         ];
 
         if (! $user->profile_completed_at) {
@@ -297,7 +293,7 @@ class ProfileProgressController extends Controller
             2 => ['birthday', 'ssn', 'gender', 'phone'],
             3 => ['address', 'city', 'state', 'zip'],
             4 => ['emergency', 'contact'],
-            5 => ['title', 'hiring_date', 'hourly_rate', 'payment_method', 'bank', 'routing', 'signature', 'require_signature'],
+            5 => ['title', 'hiring_date', 'hourly_rate', 'payment_method', 'bank', 'routing'],
             default => [],
         };
 
