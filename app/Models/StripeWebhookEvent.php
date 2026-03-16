@@ -14,6 +14,8 @@ class StripeWebhookEvent extends Model
         'stripe_event_id',
         'event_type',
         'payload_json',
+        'webhookable_id',
+        'webhookable_type',
         'processed',
         'processed_at',
     ];

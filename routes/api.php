@@ -23,6 +23,9 @@ use App\Http\Controllers\PatientAppointmentController;
 use App\Http\Controllers\CmsPublicController;
 use App\Http\Controllers\CmsAdminController;
 use App\Http\Controllers\CmsUploadController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\SubscriptionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -65,6 +68,10 @@ Route::prefix('v1')->group( function(){
     Route::get('auth/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
         ->middleware(['signed', 'throttle:6,1'])
         ->name('auth.email-verify');
+
+    Route::post('checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+    Route::post('stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+    Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
     //Patient
     Route::get('get/patient-by-name', [PatientController::class, 'getPatientByName'])->name('getPatientByName');
