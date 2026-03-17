@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'order_uuid',
         'patient_id',
         'product_id',
         'price',
@@ -28,6 +30,15 @@ class Order extends Model
         'stripe_payment_intent_id',
         'stripe_invoice_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order): void {
+            if (empty($order->order_uuid)) {
+                $order->order_uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     public function subscription(): BelongsTo
     {

@@ -81,6 +81,7 @@ class CheckoutService
             ]],
             'metadata' => [
                 'order_id' => (string) $order->id,
+                'order_uuid' => $order->order_uuid,
                 'patient_id' => (string) $order->patient_id,
                 'purchase_type' => $purchaseType,
                 'product_id' => (string) $product->id,
@@ -91,6 +92,7 @@ class CheckoutService
             $params['subscription_data'] = [
                 'metadata' => [
                     'order_id' => (string) $order->id,
+                    'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) $order->patient_id,
                     'product_id' => (string) $product->id,
                 ],
@@ -99,6 +101,7 @@ class CheckoutService
             $params['payment_intent_data'] = [
                 'metadata' => [
                     'order_id' => (string) $order->id,
+                    'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) $order->patient_id,
                 ],
             ];
@@ -112,6 +115,7 @@ class CheckoutService
 
         return [
             'order_id' => $order->id,
+            'order_uuid' => $order->order_uuid,
             'checkout_id' => $session->id,
             'checkout_url' => $session->url,
         ];

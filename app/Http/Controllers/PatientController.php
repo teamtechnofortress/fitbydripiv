@@ -70,8 +70,6 @@ class PatientController extends BaseController
 
         return $this->sendResponse(true, $patients);
     }
-
-
     /**
      * Update Patient Data
      */

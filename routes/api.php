@@ -26,6 +26,7 @@ use App\Http\Controllers\CmsUploadController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\PatientIntakeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,6 +73,15 @@ Route::prefix('v1')->group( function(){
     Route::post('checkout', [CheckoutController::class, 'create'])->name('checkout.create');
     Route::post('stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
     Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
+
+    Route::prefix('patients/{patientId}/intakes')->group(function () {
+        Route::get('/', [PatientIntakeController::class, 'index']);
+        Route::post('/', [PatientIntakeController::class, 'store']);
+        Route::get('/{intakeId}', [PatientIntakeController::class, 'show']);
+    });
+
+    Route::get('patients/intake-form', [PatientIntakeController::class, 'fetchByEmail'])->name('patients.intake-form.show');
+    Route::post('patients/intake-form', [PatientIntakeController::class, 'submitIntakeForm'])->name('patients.intake-form');
 
     //Patient
     Route::get('get/patient-by-name', [PatientController::class, 'getPatientByName'])->name('getPatientByName');

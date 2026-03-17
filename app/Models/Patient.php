@@ -81,4 +81,12 @@ class Patient extends Model
     public function invoice(){
         return $this->hasMany(Invoice::class, 'patient_id', 'id')->where('deleted', 0);
     }    
+
+    public function intakes(){
+        return $this->hasMany(PatientIntake::class, 'patient_id');
+    }
+
+    public function latestIntake(){
+        return $this->hasOne(PatientIntake::class, 'patient_id')->latestOfMany();
+    }
 }
