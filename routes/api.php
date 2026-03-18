@@ -39,6 +39,18 @@ use App\Http\Controllers\PatientIntakeController;
 |
 */
 
+Route::post('stripe/webhook', [StripeWebhookController::class, 'handle'])
+    ->middleware([
+        \App\Http\Middleware\CaptureStripeRawBody::class,
+        'throttle:stripe-webhooks',
+    ])
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\TrimStrings::class,
+        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+    ])
+    ->name('stripe.webhook');
+
 Route::prefix('v1')->group( function(){
 
     Route::post('auth/login',    [AuthController::class, 'signin'])->name('login');
@@ -70,8 +82,9 @@ Route::prefix('v1')->group( function(){
         ->middleware(['signed', 'throttle:6,1'])
         ->name('auth.email-verify');
 
+    Route::post('checkout/draft', [CheckoutController::class, 'createDraft'])->name('checkout.draft');
     Route::post('checkout', [CheckoutController::class, 'create'])->name('checkout.create');
-    Route::post('stripe/webhook', [StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+    Route::get('orders/by-session/{session_id}', [CheckoutController::class, 'showBySession'])->name('orders.by-session');
     Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
     Route::prefix('patients/{patientId}/intakes')->group(function () {
@@ -81,7 +94,7 @@ Route::prefix('v1')->group( function(){
     });
 
     Route::get('patients/intake-form', [PatientIntakeController::class, 'fetchByEmail'])->name('patients.intake-form.show');
-    Route::post('patients/intake-form', [PatientIntakeController::class, 'submitIntakeForm'])->name('patients.intake-form');
+    Route::post('intake/{order_uuid}', [PatientIntakeController::class, 'submitIntakeForm'])->name('patients.intake-form');
 
     //Patient
     Route::get('get/patient-by-name', [PatientController::class, 'getPatientByName'])->name('getPatientByName');

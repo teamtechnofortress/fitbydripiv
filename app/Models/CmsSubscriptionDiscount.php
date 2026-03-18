@@ -19,6 +19,7 @@ class CmsSubscriptionDiscount extends Model
     ];
 
     protected $casts = [
+        'id' => 'string',
         'frequency_months' => 'integer',
         'discount_percentage' => 'float',
     ];

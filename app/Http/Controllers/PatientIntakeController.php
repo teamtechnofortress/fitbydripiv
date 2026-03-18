@@ -2,14 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use App\Models\Patient;
 use App\Models\PatientIntake;
+use App\Services\CheckoutService;
+use App\Services\IdempotencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PatientIntakeController extends Controller
 {
+    public function __construct(
+        protected IdempotencyService $idempotencyService,
+        protected CheckoutService $checkoutService
+    ) {
+    }
+
     public function fetchByEmail(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -69,36 +79,58 @@ class PatientIntakeController extends Controller
         ]);
     }
 
-public function submitIntakeForm(Request $request)
-{
-    $validated = $request->validate([
-        'firstName' => ['required', 'string', 'max:255'],
-        'middleName' => ['nullable', 'string', 'max:255'],
-        'lastName' => ['required', 'string', 'max:255'],
-        'address' => ['required', 'string', 'max:255'],
-        'city' => ['required', 'string', 'max:255'],
-        'state' => ['required', 'string', 'max:255'],
-        'zip' => ['required', 'string', 'max:20'],
-        'email' => ['required', 'email', 'max:255'],
-        'dateOfBirth' => ['required', 'date'],
-        'age' => ['nullable', 'integer'],
-        'gender' => ['nullable', 'string', 'max:50'],
-        'ethnicity' => ['nullable', 'string', 'max:100'],
-        'patientType' => ['nullable', 'in:new,existing'],
-        'medicalScreening' => ['array'],
-        'medicalScreening.*' => ['nullable', 'in:yes,no'],
-        'currentConditions' => ['array'],
-        'additionalConditions' => ['array'],
-        'goals' => ['required', 'array', 'min:1'],  // At least one goal required
-        'goals.*' => ['string'],
-        'medicalHistory' => ['array'],
-        'medications' => ['nullable', 'string'],
-        'currentConditionsNotes' => ['nullable', 'string'],
-        'allergies' => ['nullable', 'string'],
-        'allergyReactions' => ['nullable', 'string'],
-    ]);
- 
-    // Get medical screening data
+    public function submitIntakeForm(Request $request, string $orderUuid)
+    {
+        Log::info('Intake submission initiated', [
+            'order_uuid' => $orderUuid,
+            'ip' => $request->ip(),
+        ]);
+
+        $validated = $request->validate([
+            'firstName' => ['required', 'string', 'max:255'],
+            'middleName' => ['nullable', 'string', 'max:255'],
+            'lastName' => ['required', 'string', 'max:255'],
+            'address' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'max:255'],
+            'zip' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email', 'max:255'],
+            'dateOfBirth' => ['required', 'date'],
+            'age' => ['nullable', 'integer'],
+            'gender' => ['nullable', 'string', 'max:50'],
+            'ethnicity' => ['nullable', 'string', 'max:100'],
+            'patientType' => ['nullable', 'in:new,existing'],
+            'medicalScreening' => ['array'],
+            'medicalScreening.*' => ['nullable', 'in:yes,no'],
+            'currentConditions' => ['array'],
+            'additionalConditions' => ['array'],
+            'goals' => ['required', 'array', 'min:1'],
+            'goals.*' => ['string'],
+            'medicalHistory' => ['array'],
+            'medications' => ['nullable', 'string'],
+            'currentConditionsNotes' => ['nullable', 'string'],
+            'allergies' => ['nullable', 'string'],
+            'allergyReactions' => ['nullable', 'string'],
+        ]);
+
+        $order = Order::where('order_uuid', $orderUuid)->first();
+
+        if (! $order) {
+            Log::warning('Intake submission failed: order not found', [
+                'order_uuid' => $orderUuid,
+            ]);
+            $message = 'Checkout draft not found. Please start a new checkout session.';
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => $message,
+                ], 404);
+            }
+
+            return redirect()->back()->withErrors(['order' => $message]);
+        }
+
+        $medical = $request->input('medicalScreening', []);
         $medical = $request->input('medicalScreening', []);
 
         $hasPositiveScreening = false;
@@ -131,7 +163,7 @@ public function submitIntakeForm(Request $request)
         }
 
         if (empty($medicalHistory)) {
-            $medicalHistory = ['none'];
+            $medicalHistory = null;
         }
 
         $medications = trim((string) ($request->input('medications') ?? ''));
@@ -155,7 +187,36 @@ public function submitIntakeForm(Request $request)
             $allergyReactions = 'none';
         }
 
-        [$patient, $intake] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions) {
+        $idempotencyPayload = array_merge(
+            $validated,
+            [
+                'orderUuid' => $orderUuid,
+                'medicalScreening' => $medical,
+                'currentConditions' => $currentConditions,
+                'additionalConditions' => $additionalConditions,
+                'medicalHistory' => $medicalHistory,
+                'medications' => $medications,
+                'currentConditionsNotes' => $currentConditionsNotes,
+                'allergies' => $allergies,
+                'allergyReactions' => $allergyReactions,
+            ]
+        );
+
+        Log::info('Intake submission passed validation', [
+            'order_uuid' => $orderUuid,
+            'email' => $validated['email'],
+        ]);
+
+        $result = $this->idempotencyService->handle(
+            $request->header('Idempotency-Key'),
+            'patients.intake-form',
+            $idempotencyPayload,
+            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order) {
+                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order) {
+                    Log::info('Intake transaction started', [
+                        'order_id' => $order->id,
+                        'email' => $validated['email'],
+                    ]);
             // ─────────────────────────────────────────────────────────────
             // 1. CREATE OR UPDATE PATIENT
             // ─────────────────────────────────────────────────────────────
@@ -218,22 +279,58 @@ public function submitIntakeForm(Request $request)
         // 4. CREATE OR UPDATE INTAKE
         // ─────────────────────────────────────────────────────────────
         $intake = $patient->latestIntake()->first();
- 
+
         if ($intake) {
             $intake->update($intakeData);
         } else {
             $intake = $patient->intakes()->create($intakeData);
         }
- 
-        return [$patient, $intake];
-    });
- 
-    return response()->json([
-        'message' => 'Patient intake submitted successfully.',
-        'patient' => $patient,
-        'intake' => $intake,
-    ], 201);
-}
+
+                    if ($order->patient_id !== $patient->id) {
+                        $order->patient_id = $patient->id;
+                        $order->save();
+                        Log::info('Order linked to patient', [
+                            'order_id' => $order->id,
+                            'patient_id' => $patient->id,
+                        ]);
+                    }
+
+                    Log::info('Intake transaction completed', [
+                        'patient_id' => $patient->id,
+                        'intake_id' => $intake->id,
+                    ]);
+
+                    return [$patient, $intake, $order->fresh()];
+                });
+
+                Log::info('Initiating checkout session for order', [
+                    'order_id' => $updatedOrder->id,
+                    'purchase_type' => $updatedOrder->purchase_type,
+                ]);
+
+                $checkout = $this->checkoutService->createCheckoutForOrder($updatedOrder);
+
+                Log::info('Checkout session created after intake', [
+                    'order_id' => $updatedOrder->id,
+                    'checkout_id' => $checkout['checkout_id'],
+                ]);
+
+                return [
+                    'message' => 'Patient intake submitted successfully.',
+                    'patient' => $patient,
+                    'intake' => $intake,
+                    'checkout' => $checkout,
+                ];
+            }
+        );
+
+        Log::info('Intake submission finished', [
+            'order_uuid' => $orderUuid,
+            'patient_id' => $result['patient']['id'] ?? null,
+        ]);
+
+        return response()->json($result, 201);
+    }
 
 
     public function store(Request $request, int $patientId): JsonResponse

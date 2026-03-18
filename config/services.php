@@ -37,11 +37,11 @@ return [
         'from' => env('TWILIO_PHONE_NUMBER'),
     ],
 
-    'stripe' => [
+'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-        'success_url' => env('STRIPE_SUCCESS_URL', 'http://localhost:3000/checkout/success'),
-        'cancel_url' => env('STRIPE_CANCEL_URL', 'http://localhost:3000/checkout/cancel'),
+        'success_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/') . '/payment/cancel',
     ],
 ];

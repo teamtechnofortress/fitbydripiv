@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class CmsProduct extends Model
 {
@@ -64,8 +65,30 @@ class CmsProduct extends Model
         return $this->hasMany(CmsProductFaq::class, 'product_id')->orderBy('display_order');
     }
 
+    // public function subscriptionDiscounts(): HasMany
+    // {
+    //     $preview = CmsSubscriptionDiscount::where('product_id', $this->id)
+    //         ->orderBy('frequency_months')
+    //         ->get();
+
+    //     Log::info('Fetching subscription discounts snapshot', [
+    //         'product_id' => $this->id,
+    //         'count' => $preview->count(),
+    //         'discounts' => $preview->map(function ($discount) {
+    //             return [
+    //                 'id' => $discount->id,
+    //                 'frequency_months' => $discount->frequency_months,
+    //                 'discount_percentage' => $discount->discount_percentage,
+    //             ];
+    //         })->all(),
+    //     ]);
+
+    //     return $this->hasMany(CmsSubscriptionDiscount::class, 'product_id')->orderBy('frequency_months');
+    // }
     public function subscriptionDiscounts(): HasMany
     {
-        return $this->hasMany(CmsSubscriptionDiscount::class, 'product_id')->orderBy('frequency_months');
+        return $this->hasMany(CmsSubscriptionDiscount::class, 'product_id')
+            ->select(['id', 'product_id', 'frequency_months', 'discount_percentage', 'created_at', 'updated_at'])
+            ->orderBy('frequency_months');
     }
 }
