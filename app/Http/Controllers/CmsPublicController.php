@@ -9,6 +9,7 @@ use App\Models\CmsSiteSetting;
 use App\Models\CmsContactSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CmsPublicController extends Controller
 {
@@ -40,9 +41,16 @@ class CmsPublicController extends Controller
     public function getFeaturedProducts(): JsonResponse
     {
         $products = CmsProduct::where('is_featured', true)
+            ->orderByRaw("CASE WHEN slug = ? THEN 0 ELSE 1 END", ['tirzepatide'])
             ->orderBy('display_order')
             ->limit(6)
             ->get();
+
+        Log::info('CMS featured products fetched', [
+            'count' => $products->count(),
+            'product_ids' => $products->pluck('id'),
+        ]);
+
         return response()->json(['success' => true, 'data' => $products]);
     }
 

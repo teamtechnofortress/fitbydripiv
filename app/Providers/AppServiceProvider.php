@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Subscription;
+use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
             'orders'        => Order::class,
             'subscriptions' => Subscription::class,
             'payments'      => Payment::class,
+            'users'         => User::class,
         ]);
 
         VerifyEmail::createUrlUsing(function ($notifiable) {

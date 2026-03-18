@@ -27,6 +27,9 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PatientIntakeController;
+use App\Http\Controllers\Admin\OrderAdminController;
+use App\Http\Controllers\Admin\SubscriptionAdminController;
+use App\Http\Controllers\Admin\WebhookAdminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -160,6 +163,14 @@ Route::prefix('v1')->group( function(){
 
         //Sales Metrics
         Route::get('get/sales-metrics', [SalesMetricsController::class, 'getSalesMetrics'])->name('getSalesMetrics');
+
+        Route::prefix('admin')->group(function () {
+            Route::get('orders', [OrderAdminController::class, 'index'])->name('admin.orders.index');
+            Route::get('orders/{order}', [OrderAdminController::class, 'show'])->name('admin.orders.show');
+            Route::get('subscriptions', [SubscriptionAdminController::class, 'index'])->name('admin.subscriptions.index');
+            Route::get('subscriptions/{subscription}', [SubscriptionAdminController::class, 'show'])->name('admin.subscriptions.show');
+            Route::get('webhooks/{webhook}', [WebhookAdminController::class, 'show'])->name('admin.webhooks.show');
+        });
 
         //Staff #########################
         Route::get('get/staffs', [StaffController::class, 'getAllStaffs']);

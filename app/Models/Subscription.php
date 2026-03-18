@@ -42,4 +42,9 @@ class Subscription extends Model
     {
         return $this->morphMany(StripeWebhookEvent::class, 'webhookable');
     }
+
+    public function patient(): BelongsTo
+    {
+        return $this->belongsTo(Patient::class);
+    }
 }

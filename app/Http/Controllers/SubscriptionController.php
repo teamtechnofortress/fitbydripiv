@@ -18,7 +18,8 @@ class SubscriptionController extends Controller
         }
 
         Stripe::setApiKey(config('services.stripe.secret'));
-        StripeSubscriptionApi::cancel($subscription->stripe_subscription_id, []);
+        $stripeSubscription = StripeSubscriptionApi::retrieve($subscription->stripe_subscription_id);
+        $stripeSubscription->cancel();
 
         $subscription->update([
             'status' => 'cancelled',
