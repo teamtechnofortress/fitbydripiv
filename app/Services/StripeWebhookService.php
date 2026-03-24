@@ -62,6 +62,7 @@ class StripeWebhookService
 
                 // One-time payment succeeded (non-subscription checkout or direct PaymentIntent)
                 'payment_intent.succeeded'        => $this->handlePaymentIntentSucceeded($event->data->object, $webhookEvent),
+                'payment_intent.payment_failed'   => $this->handlePaymentIntentFailed($event->data->object, $webhookEvent),
 
                 default => Log::info('Stripe webhook event type not handled', ['type' => $event->type]),
             };
@@ -495,6 +496,49 @@ class StripeWebhookService
                 'failure_reason'           => null,
             ]);
         }
+
+        $webhookEvent->webhookable()->associate($payment);
+        $webhookEvent->save();
+    }
+
+    protected function handlePaymentIntentFailed(object $paymentIntent, StripeWebhookEvent $webhookEvent): void
+    {
+        if (! empty($paymentIntent->invoice)) {
+            return;
+        }
+
+        $payment = Payment::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+        $order = $payment?->order;
+
+        if (! $order) {
+            $order = Order::where('stripe_payment_intent_id', $paymentIntent->id)->first();
+        }
+
+        if (! $order) {
+            Log::warning('payment_intent.payment_failed: order not found', [
+                'payment_intent_id' => $paymentIntent->id,
+                'metadata' => $paymentIntent->metadata ?? new \stdClass(),
+            ]);
+            return;
+        }
+
+        if (! $payment) {
+            $payment = Payment::create([
+                'order_id' => $order->id,
+                'stripe_payment_intent_id' => $paymentIntent->id,
+                'amount' => round(((float) ($paymentIntent->amount ?? 0)) / 100, 2),
+                'currency' => strtoupper($paymentIntent->currency ?? $order->currency ?? 'USD'),
+                'status' => 'failed',
+                'failure_reason' => $paymentIntent->last_payment_error->message ?? 'Payment failed',
+            ]);
+        } else {
+            $payment->update([
+                'status' => 'failed',
+                'failure_reason' => $paymentIntent->last_payment_error->message ?? 'Payment failed',
+            ]);
+        }
+
+        $order->update(['payment_status' => 'failed']);
 
         $webhookEvent->webhookable()->associate($payment);
         $webhookEvent->save();
