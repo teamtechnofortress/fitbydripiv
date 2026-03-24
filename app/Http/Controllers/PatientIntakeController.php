@@ -145,7 +145,9 @@ class PatientIntakeController extends Controller
             return response()->json([
                 'message' => 'One or more medical screening answers require manual review. Please contact support.',
                 'errors' => [
-                    'medicalScreening' => ['All medical screening answers must be "no" to continue.'],
+                    'medicalScreening' => ['Thank you for your interest in FitbyByShot. Unfortunately it is not completely safe
+                    for us to prescribe the selected medication based on your answers. Please reach out
+                    to our support email with any questions or concerns you may have.'],
                 ],
             ], 422);
         }
