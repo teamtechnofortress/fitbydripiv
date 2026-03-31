@@ -42,6 +42,7 @@ class PatientIntakeController extends Controller
             'firstName' => $patient->first_name,
             'middleName' => $patient->middle_name,
             'lastName' => $patient->last_name,
+            'phone' => $patient->phone,
             'address' => $patient->address,
             'city' => $patient->city,
             'state' => $patient->state,
@@ -90,6 +91,7 @@ class PatientIntakeController extends Controller
             'firstName' => ['required', 'string', 'max:255'],
             'middleName' => ['nullable', 'string', 'max:255'],
             'lastName' => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
             'state' => ['required', 'string', 'max:255'],
@@ -209,12 +211,15 @@ class PatientIntakeController extends Controller
             'email' => $validated['email'],
         ]);
 
+        $phone = trim((string) ($validated['phone'] ?? ''));
+        $phone = $phone !== '' ? $phone : null;
+
         $result = $this->idempotencyService->handle(
             $request->header('Idempotency-Key'),
             'patients.intake-form',
             $idempotencyPayload,
-            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order) {
-                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order) {
+            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone) {
+                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone) {
                     Log::info('Intake transaction started', [
                         'order_id' => $order->id,
                         'email' => $validated['email'],
@@ -227,6 +232,7 @@ class PatientIntakeController extends Controller
             'first_name' => $validated['firstName'],
             'middle_name' => $validated['middleName'] ?? null,
             'last_name' => $validated['lastName'],
+            'phone' => $phone,
             'address' => $validated['address'],
             'city' => $validated['city'],
             'state' => $validated['state'],
