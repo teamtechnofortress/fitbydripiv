@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Order;
 use InvalidArgumentException;
 
 class PricingService
@@ -9,9 +10,9 @@ class PricingService
     public function getBasePrice(object $product, string $pricingType): float
     {
         $price = match ($pricingType) {
-            'base' => $product->base_price,
-            'micro' => $product->micro_dose_price,
-            'sample' => $product->sample_price,
+            Order::PRICING_TYPE_BASE => $product->base_price,
+            Order::PRICING_TYPE_MICRO_DOSE => $product->micro_dose_price,
+            Order::PRICING_TYPE_SAMPLE => $product->sample_price,
             default => throw new InvalidArgumentException('Invalid pricing type'),
         };
 

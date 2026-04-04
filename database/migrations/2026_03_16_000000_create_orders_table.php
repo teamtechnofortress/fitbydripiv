@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('subscription_id')->nullable();
             $table->integer('billing_cycle_number')->nullable();
             $table->enum('purchase_type', ['one_time', 'subscription']);
-            $table->enum('pricing_type', ['base', 'micro', 'sample']);
+            $table->enum('pricing_type', ['base', 'micro_dose', 'sample']);
             $table->uuid('subscription_discount_id')->nullable();
             $table->enum('status', ['pending', 'completed', 'cancelled'])->default('pending');
             $table->enum('payment_status', ['unpaid', 'paid', 'failed'])->default('unpaid');

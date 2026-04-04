@@ -14,6 +14,16 @@ class Order extends Model
 {
     use HasFactory;
 
+    public const PRICING_TYPE_BASE = 'base';
+    public const PRICING_TYPE_MICRO_DOSE = 'micro_dose';
+    public const PRICING_TYPE_SAMPLE = 'sample';
+
+    public const PRICING_TYPES = [
+        self::PRICING_TYPE_BASE,
+        self::PRICING_TYPE_MICRO_DOSE,
+        self::PRICING_TYPE_SAMPLE,
+    ];
+
     protected $fillable = [
         'order_uuid',
         'patient_id',
