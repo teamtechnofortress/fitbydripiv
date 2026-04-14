@@ -24,6 +24,10 @@ use App\Http\Controllers\CmsPublicController;
 use App\Http\Controllers\CmsAdminController;
 use App\Http\Controllers\CmsUploadController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\ProductStepController;
+use App\Http\Controllers\AdminMediaController;
+use App\Http\Controllers\IngredientController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PatientIntakeController;
@@ -170,6 +174,22 @@ Route::prefix('v1')->group( function(){
             Route::get('subscriptions', [SubscriptionAdminController::class, 'index'])->name('admin.subscriptions.index');
             Route::get('subscriptions/{subscription}', [SubscriptionAdminController::class, 'show'])->name('admin.subscriptions.show');
             Route::get('webhooks/{webhook}', [WebhookAdminController::class, 'show'])->name('admin.webhooks.show');
+            Route::post('products/step-1', [ProductStepController::class, 'step1'])->name('admin.products.step1');
+            Route::post('products/step-2', [ProductStepController::class, 'step2'])->name('admin.products.step2');
+            Route::post('products/step-3', [ProductStepController::class, 'step3'])->name('admin.products.step3');
+            Route::post('products/step-4', [ProductStepController::class, 'step4'])->name('admin.products.step4');
+            Route::post('products/step-5', [ProductStepController::class, 'step5'])->name('admin.products.step5');
+            Route::get('products', [ProductController::class, 'index'])->name('admin.products.index');
+            Route::get('products/drafts', [ProductController::class, 'drafts'])->name('admin.products.drafts');
+            Route::get('products/{productId}/step-1', [ProductStepController::class, 'getStep1'])->name('admin.products.get-step1');
+            Route::get('products/{productId}/step-2', [ProductStepController::class, 'getStep2'])->name('admin.products.get-step2');
+            Route::get('products/{productId}/step-3', [ProductStepController::class, 'getStep3'])->name('admin.products.get-step3');
+            Route::get('products/{productId}/step-4', [ProductStepController::class, 'getStep4'])->name('admin.products.get-step4');
+            Route::get('products/{productId}/step-5', [ProductStepController::class, 'getStep5'])->name('admin.products.get-step5');
+            Route::get('products/{productId}/step-status', [ProductStepController::class, 'status'])->name('admin.products.step-status');
+            Route::post('media/upload', [AdminMediaController::class, 'upload'])->name('admin.media.upload');
+            Route::get('ingredients', [IngredientController::class, 'index'])->name('admin.ingredients.index');
+            Route::post('ingredients', [IngredientController::class, 'store'])->name('admin.ingredients.store');
         });
 
         //Staff #########################
