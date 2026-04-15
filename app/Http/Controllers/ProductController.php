@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\ProductRepository;
+use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -10,7 +11,8 @@ use Illuminate\Support\Facades\Log;
 class ProductController extends Controller
 {
     public function __construct(
-        protected ProductRepository $productRepository
+        protected ProductRepository $productRepository,
+        protected ProductService $productService
     ) {
     }
 
@@ -71,6 +73,69 @@ class ProductController extends Controller
             'success' => true,
             'data' => collect($products->items())->map(fn ($product) => $this->transformProductListItem($product))->values(),
             'meta' => $this->paginationMeta($products),
+        ]);
+    }
+
+    public function destroy(string $productId): JsonResponse
+    {
+        $product = $this->productRepository->findById($productId);
+
+        $product->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product deleted successfully.',
+            'data' => [
+                'product_id' => $productId,
+            ],
+        ]);
+    }
+
+    public function publish(string $productId): JsonResponse
+    {
+        $product = $this->productService->publishProduct($productId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product published successfully.',
+            'data' => [
+                'product_id' => $product->id,
+                'is_published' => $product->is_published,
+                'completion_status' => $product->completion_status,
+            ],
+        ]);
+    }
+
+    public function unpublish(string $productId): JsonResponse
+    {
+        $product = $this->productService->unpublishProduct($productId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Product unpublished successfully.',
+            'data' => [
+                'product_id' => $product->id,
+                'is_published' => $product->is_published,
+                'completion_status' => $product->completion_status,
+            ],
+        ]);
+    }
+
+    public function publishStatus(string $productId): JsonResponse
+    {
+        $product = $this->productRepository->findById($productId);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'product_id' => $product->id,
+                'is_published' => $product->is_published,
+                'completion_status' => $product->completion_status,
+                'completion_percentage' => $product->completion_percentage,
+                'completion_step' => $product->completion_step,
+                'can_publish' => $product->completion_status === 'complete' && ! $product->is_published,
+                'can_unpublish' => $product->is_published,
+            ],
         ]);
     }
 

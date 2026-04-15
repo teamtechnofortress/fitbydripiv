@@ -13,6 +13,7 @@ use App\Models\ProductResearchLink;
 use App\Models\Ingredient;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProductService
 {
@@ -148,6 +149,36 @@ class ProductService
         $product = Product::findOrFail($productId);
 
         return $this->productCompletionService->update($product);
+    }
+
+    public function publishProduct(string $productId): Product
+    {
+        return DB::transaction(function () use ($productId) {
+            $product = Product::findOrFail($productId);
+            $product = $this->productCompletionService->update($product);
+
+            if ($product->completion_status !== 'complete') {
+                throw ValidationException::withMessages([
+                    'product' => 'Only completed products can be published.',
+                ]);
+            }
+
+            $product->is_published = true;
+            $product->save();
+
+            return $product->fresh();
+        });
+    }
+
+    public function unpublishProduct(string $productId): Product
+    {
+        return DB::transaction(function () use ($productId) {
+            $product = Product::findOrFail($productId);
+            $product->is_published = false;
+            $product->save();
+
+            return $product->fresh();
+        });
     }
 
     public function getStep1Data(string $productId): Product

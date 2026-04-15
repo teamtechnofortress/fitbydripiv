@@ -17,7 +17,9 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 |
 */
 
-Route::get('/{any}', function(){ return view('welcome'); })->where('any', '^(?!api|forgot-password|reset-password).*$');
+Route::get('/{any}', function () {
+    return view('welcome');
+})->where('any', '^(?!api|storage|forgot-password|reset-password).*$');
 
 Route::middleware('guest')->group(function () {
 

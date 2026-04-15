@@ -7,6 +7,11 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ProductRepository
 {
+    public function findById(string $productId): Product
+    {
+        return Product::findOrFail($productId);
+    }
+
     public function paginateAll(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->baseQuery($filters)

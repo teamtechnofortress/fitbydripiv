@@ -181,6 +181,10 @@ Route::prefix('v1')->group( function(){
             Route::post('products/step-5', [ProductStepController::class, 'step5'])->name('admin.products.step5');
             Route::get('products', [ProductController::class, 'index'])->name('admin.products.index');
             Route::get('products/drafts', [ProductController::class, 'drafts'])->name('admin.products.drafts');
+            Route::delete('products/{productId}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
+            Route::get('products/{productId}/publish-status', [ProductController::class, 'publishStatus'])->name('admin.products.publish-status');
+            Route::post('products/{productId}/publish', [ProductController::class, 'publish'])->name('admin.products.publish');
+            Route::post('products/{productId}/unpublish', [ProductController::class, 'unpublish'])->name('admin.products.unpublish');
             Route::get('products/{productId}/step-1', [ProductStepController::class, 'getStep1'])->name('admin.products.get-step1');
             Route::get('products/{productId}/step-2', [ProductStepController::class, 'getStep2'])->name('admin.products.get-step2');
             Route::get('products/{productId}/step-3', [ProductStepController::class, 'getStep3'])->name('admin.products.get-step3');
