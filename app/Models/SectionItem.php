@@ -6,18 +6,18 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ProductFaq extends Model
+class SectionItem extends Model
 {
     use HasUuids;
 
-    protected $table = 'product_faqs';
-
-    public const UPDATED_AT = null;
+    protected $table = 'section_items';
 
     protected $fillable = [
-        'product_id',
-        'question',
-        'answer',
+        'section_id',
+        'title',
+        'description',
+        'icon',
+        'image',
         'sort_order',
     ];
 
@@ -25,8 +25,8 @@ class ProductFaq extends Model
         'sort_order' => 'integer',
     ];
 
-    public function product(): BelongsTo
+    public function section(): BelongsTo
     {
-        return $this->belongsTo(Product::class, 'product_id');
+        return $this->belongsTo(PageSection::class, 'section_id');
     }
 }

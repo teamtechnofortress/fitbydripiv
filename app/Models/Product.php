@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class Product extends Model
 {
@@ -16,6 +18,7 @@ class Product extends Model
 
     protected $fillable = [
         'name',
+        'slug',
         'category',
         'description',
         'about_treatment',
@@ -55,9 +58,9 @@ class Product extends Model
         return $this->hasMany(ProductBenefit::class, 'product_id')->orderBy('sort_order');
     }
 
-    public function faqs(): HasMany
+    public function faqs(): MorphMany
     {
-        return $this->hasMany(ProductFaq::class, 'product_id')->orderBy('sort_order');
+        return $this->morphMany(Faq::class, 'scope')->orderBy('sort_order');
     }
 
     public function researchLinks(): HasMany
@@ -82,5 +85,13 @@ class Product extends Model
             ->withPivot(['id', 'sort_order'])
             ->withTimestamps()
             ->orderByPivot('sort_order');
+    }
+
+    public function scopeLive(Builder $query): Builder
+    {
+        return $query
+            ->where('is_published', true)
+            ->where('completion_status', 'complete')
+            ->where('completion_percentage', 100);
     }
 }

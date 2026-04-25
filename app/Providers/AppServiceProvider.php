@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Faq;
 use App\Models\Order;
+use App\Models\PageSection;
 use App\Models\Payment;
+use App\Models\Product;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -35,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
             'subscriptions' => Subscription::class,
             'payments'      => Payment::class,
             'users'         => User::class,
+            'product'       => Product::class,
+            'section'       => PageSection::class,
         ]);
 
         VerifyEmail::createUrlUsing(function ($notifiable) {

@@ -3,16 +3,17 @@
 namespace App\Services;
 
 use App\Models\PricingOption;
+use App\Models\Faq;
 use App\Models\ProductIngredientMap;
 use App\Models\Product;
 use App\Models\ProductBenefit;
-use App\Models\ProductFaq;
 use App\Models\ProductImage;
 use App\Models\ProductPricing;
 use App\Models\ProductResearchLink;
 use App\Models\Ingredient;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ProductService
@@ -25,7 +26,8 @@ class ProductService
     public function createProductBasicInfo(array $data): Product
     {
         return DB::transaction(function () use ($data) {
-            return Product::create($this->filterProductAttributes($data, [
+            $product = new Product();
+            $product->fill($this->filterProductAttributes($data, [
                 'name',
                 'category',
                 'description',
@@ -36,6 +38,10 @@ class ProductService
                 'completion_step',
                 'cover_image_id',
             ]));
+            $this->syncProductSlug($product);
+            $product->save();
+
+            return $product;
         });
     }
 
@@ -51,6 +57,7 @@ class ProductService
                 'category',
                 'description',
             ]));
+            $this->syncProductSlug($product);
             $product->is_published = false;
             $product->save();
 
@@ -222,6 +229,7 @@ class ProductService
             $product = $this->resolveProduct($product);
             $product->fill($this->filterProductAttributes($data, [
                 'name',
+                'slug',
                 'category',
                 'description',
                 'about_treatment',
@@ -238,6 +246,7 @@ class ProductService
                 'completion_step',
                 'cover_image_id',
             ]));
+            $this->syncProductSlug($product);
             $product->save();
 
             return $product->fresh();
@@ -321,6 +330,38 @@ class ProductService
         return Arr::only($data, $allowedKeys);
     }
 
+    protected function syncProductSlug(Product $product): void
+    {
+        if (empty($product->name)) {
+            return;
+        }
+
+        if (! $product->isDirty('name') && ! empty($product->slug)) {
+            return;
+        }
+
+        $baseSlug = Str::slug($product->name);
+
+        if ($baseSlug === '') {
+            $baseSlug = 'product';
+        }
+
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (
+            Product::query()
+                ->where('slug', $slug)
+                ->when($product->exists, fn ($query) => $query->where('id', '!=', $product->id))
+                ->exists()
+        ) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        $product->slug = $slug;
+    }
+
     protected function replaceProductImages(Product $product, array $images): ?string
     {
         ProductImage::where('product_id', $product->id)->delete();
@@ -366,14 +407,14 @@ class ProductService
 
     protected function replaceProductFaqs(Product $product, array $faqs): void
     {
-        ProductFaq::where('product_id', $product->id)->delete();
+        $product->faqs()->delete();
 
         foreach (array_values($faqs) as $index => $faq) {
-            ProductFaq::create([
-                'product_id' => $product->id,
+            $product->faqs()->create([
                 'question' => $faq['question'],
                 'answer' => $faq['answer'],
                 'sort_order' => $faq['sort_order'] ?? $index,
+                'is_active' => true,
             ]);
         }
     }

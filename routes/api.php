@@ -28,6 +28,9 @@ use App\Http\Controllers\ProductStepController;
 use App\Http\Controllers\AdminMediaController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ContentAdminController;
+use App\Http\Controllers\ContentPublicController;
+use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PatientIntakeController;
@@ -183,6 +186,7 @@ Route::prefix('v1')->group( function(){
             Route::get('products/drafts', [ProductController::class, 'drafts'])->name('admin.products.drafts');
             Route::delete('products/{productId}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
             Route::get('products/{productId}/publish-status', [ProductController::class, 'publishStatus'])->name('admin.products.publish-status');
+            Route::get('products/{productId}/preview', [ProductController::class, 'preview'])->name('admin.products.preview');
             Route::post('products/{productId}/publish', [ProductController::class, 'publish'])->name('admin.products.publish');
             Route::post('products/{productId}/unpublish', [ProductController::class, 'unpublish'])->name('admin.products.unpublish');
             Route::get('products/{productId}/step-1', [ProductStepController::class, 'getStep1'])->name('admin.products.get-step1');
@@ -194,6 +198,27 @@ Route::prefix('v1')->group( function(){
             Route::post('media/upload', [AdminMediaController::class, 'upload'])->name('admin.media.upload');
             Route::get('ingredients', [IngredientController::class, 'index'])->name('admin.ingredients.index');
             Route::post('ingredients', [IngredientController::class, 'store'])->name('admin.ingredients.store');
+
+            Route::get('content/settings', [ContentAdminController::class, 'getSettings']);
+            Route::post('content/settings', [ContentAdminController::class, 'saveSetting']);
+            Route::delete('content/settings/{id}', [ContentAdminController::class, 'deleteSetting']);
+            Route::get('content/layout', [ContentAdminController::class, 'getGlobalSections']);
+            Route::post('content/layout', [ContentAdminController::class, 'saveGlobalSection']);
+
+            Route::get('content/pages', [ContentAdminController::class, 'getPages']);
+            Route::get('content/pages/{id}', [ContentAdminController::class, 'getPage']);
+            Route::post('content/pages', [ContentAdminController::class, 'savePage']);
+            Route::delete('content/pages/{id}', [ContentAdminController::class, 'deletePage']);
+            Route::get('content/pages/{pageId}/sections', [ContentAdminController::class, 'getPageSections']);
+            Route::post('content/pages/{pageId}/sections', [ContentAdminController::class, 'createPageSection']);
+
+            Route::post('content/sections', [ContentAdminController::class, 'saveSection']);
+            Route::delete('content/sections/{id}', [ContentAdminController::class, 'deleteSection']);
+            Route::post('content/pages/{pageId}/sections/reorder', [ContentAdminController::class, 'reorderSections']);
+
+            Route::post('content/section-items', [ContentAdminController::class, 'saveSectionItem']);
+            Route::delete('content/section-items/{id}', [ContentAdminController::class, 'deleteSectionItem']);
+            Route::post('content/sections/{sectionId}/items/reorder', [ContentAdminController::class, 'reorderSectionItems']);
         });
 
         //Staff #########################
@@ -361,5 +386,15 @@ Route::prefix('v1')->group( function(){
         Route::get('site-settings', [CmsPublicController::class, 'getSiteSettings']);
         Route::post('contact', [CmsPublicController::class, 'submitContact']);
     });
+
+    Route::prefix('content')->group(function () {
+        Route::get('settings', [ContentPublicController::class, 'getSettings']);
+        Route::get('pages', [ContentPublicController::class, 'getPages']);
+        Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug']);
+    });
+
+    Route::get('layout', [LayoutController::class, 'show']);
+    Route::get('pages', [ContentPublicController::class, 'getPages']);
+    Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug']);
 
 });

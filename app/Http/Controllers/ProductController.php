@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\ProductRepository;
+use App\Services\Content\Resolvers\ProductPageResolver;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,8 @@ class ProductController extends Controller
 {
     public function __construct(
         protected ProductRepository $productRepository,
-        protected ProductService $productService
+        protected ProductService $productService,
+        protected ProductPageResolver $productPageResolver
     ) {
     }
 
@@ -31,20 +33,15 @@ class ProductController extends Controller
             $validated['per_page'] ?? 15
         );
 
-        Log::info('Admin products list fetched', [
+        $payload = $this->buildProductListPayload($products);
+
+        Log::info('Admin products list response', [
             'filters' => $validated,
-            'count' => count($products->items()),
-            'current_page' => $products->currentPage(),
-            'per_page' => $products->perPage(),
-            'total' => $products->total(),
-            'product_ids' => collect($products->items())->pluck('id')->values()->all(),
+            'data' => $payload['data'],
+            'meta' => $payload['meta'],
         ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => collect($products->items())->map(fn ($product) => $this->transformProductListItem($product))->values(),
-            'meta' => $this->paginationMeta($products),
-        ]);
+        return response()->json($payload);
     }
 
     public function drafts(Request $request): JsonResponse
@@ -60,20 +57,24 @@ class ProductController extends Controller
             $validated['per_page'] ?? 15
         );
 
-        Log::info('Admin draft products list fetched', [
+        $payload = $this->buildProductListPayload($products);
+
+        Log::info('Admin draft products list response', [
             'filters' => $validated,
-            'count' => count($products->items()),
-            'current_page' => $products->currentPage(),
-            'per_page' => $products->perPage(),
-            'total' => $products->total(),
-            'product_ids' => collect($products->items())->pluck('id')->values()->all(),
+            'data' => $payload['data'],
+            'meta' => $payload['meta'],
         ]);
 
-        return response()->json([
+        return response()->json($payload);
+    }
+
+    protected function buildProductListPayload($products): array
+    {
+        return [
             'success' => true,
-            'data' => collect($products->items())->map(fn ($product) => $this->transformProductListItem($product))->values(),
+            'data' => collect($products->items())->map(fn ($product) => $this->transformProductListItem($product))->values()->all(),
             'meta' => $this->paginationMeta($products),
-        ]);
+        ];
     }
 
     public function destroy(string $productId): JsonResponse
@@ -139,11 +140,29 @@ class ProductController extends Controller
         ]);
     }
 
+    public function preview(string $productId): JsonResponse
+    {
+        $preview = $this->productPageResolver->previewById($productId);
+
+        if (! $preview) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product preview not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $preview,
+        ]);
+    }
+
     protected function transformProductListItem(object $product): array
     {
         return [
             'id' => $product->id,
             'name' => $product->name,
+            'slug' => $product->slug,
             'category' => $product->category,
             'description' => $product->description,
             'is_featured' => $product->is_featured,

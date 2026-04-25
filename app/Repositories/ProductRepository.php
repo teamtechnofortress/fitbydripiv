@@ -31,11 +31,10 @@ class ProductRepository
     protected function baseQuery(array $filters = [])
     {
         $query = Product::query()
-            ->with(['coverImage'])
-            ->withCount(['images', 'benefits', 'faqs', 'researchLinks', 'pricing'])
             ->select([
                 'id',
                 'name',
+                'slug',
                 'category',
                 'description',
                 'is_featured',
@@ -46,7 +45,9 @@ class ProductRepository
                 'cover_image_id',
                 'created_at',
                 'updated_at',
-            ]);
+            ])
+            ->with(['coverImage'])
+            ->withCount(['images', 'benefits', 'faqs', 'researchLinks', 'pricing']);
 
         if (! empty($filters['search'])) {
             $search = trim((string) $filters['search']);

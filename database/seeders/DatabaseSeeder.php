@@ -13,7 +13,17 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            CmsSeeder::class,
+            // CmsSeeder::class,
+            SettingSeeder::class,
+            GlobalSectionSeeder::class,
+            AboutPageSeeder::class,
+            HomePageSeeder::class,
+            CategoryTemplateSeeder::class,
+            GeneralFaqPageSeeder::class,
+            PrivacyPageSeeder::class,
+            ProductSelectionPageSeeder::class,
+            TelehealthFaqPageSeeder::class,
+            TermsPageSeeder::class,
         ]);
     }
 }
