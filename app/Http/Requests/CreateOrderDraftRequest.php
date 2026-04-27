@@ -16,9 +16,9 @@ class CreateOrderDraftRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'product_slug' => ['required', 'string', 'exists:cms_products,slug'],
+            'product_slug' => ['required', 'string', 'exists:products,slug'],
             'pricing_type' => ['required', Rule::in(Order::PRICING_TYPES)],
-            'subscription_discount_id' => ['nullable', 'string', 'exists:cms_subscription_discounts,id'],
+            'pricing_option_id' => ['required', 'uuid', 'exists:pricing_options,id'],
         ];
     }
 }

@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             ProductSelectionPageSeeder::class,
             TelehealthFaqPageSeeder::class,
             TermsPageSeeder::class,
+            SettingSeeder::class,
         ]);
     }
 }

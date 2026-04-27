@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\CmsProduct;
-use App\Models\CmsSubscriptionDiscount;
 use App\Models\Order;
+use App\Models\PricingOption;
+use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,51 +24,29 @@ class CheckoutService
         Log::info('Checkout draft creation started', [
             'product_slug' => $data['product_slug'] ?? null,
             'pricing_type' => $data['pricing_type'] ?? null,
-            'subscription_discount_id' => $data['subscription_discount_id'] ?? null,
+            'pricing_option_id' => $data['pricing_option_id'] ?? null,
         ]);
 
-        $product = CmsProduct::with('subscriptionDiscounts')
-            ->where('slug', $data['product_slug'])
-            ->first();
+        [$product, $pricing, $pricingOption] = $this->resolveCheckoutSelection($data);
+        $purchaseType = $pricing->pricing_type;
+        $finalPrice = $this->pricingService->resolvePrice($pricingOption);
+        $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->pricingService->resolveFrequencyMonths($pricingOption)
+            : null;
 
-        if (! $product) {
-            abort(404, 'Product not found.');
-        }
-
-        $basePrice = $this->pricingService->getBasePrice($product, $data['pricing_type']);
-
-        $purchaseType = 'one_time';
-        $discount = null;
-        $finalPrice = $basePrice;
-
-        if (! empty($data['subscription_discount_id'])) {
-            $discount = CmsSubscriptionDiscount::where('id', $data['subscription_discount_id'])
-                ->where('product_id', $product->id)
-                ->first();
-
-            if (! $discount) {
-                throw new InvalidArgumentException('Invalid subscription discount selected.');
-            }
-
-            $purchaseType = 'subscription';
-            $finalPrice = $this->pricingService->applyDiscount(
-                $basePrice,
-                (float) $discount->discount_percentage
-            );
-        }
-
-        $order = DB::transaction(function () use ($data, $product, $purchaseType, $discount, $finalPrice) {
+        $order = DB::transaction(function () use ($data, $product, $purchaseType, $pricingOption, $finalPrice, $frequencyMonths) {
             return Order::create([
                 'patient_id' => $data['patient_id'] ?? null,
                 'product_id' => $product->id,
                 'price' => $finalPrice,
-                'currency' => $product->currency ?? 'USD',
+                'currency' => $this->pricingService->resolveCurrency($product),
                 'subscription_id' => null,
-                'billing_cycle_number' => $purchaseType === 'subscription' ? 1 : null,
+                'billing_cycle_number' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 1 : null,
                 'purchase_type' => $purchaseType,
-                'pricing_type' => $data['pricing_type'],
-                'subscription_discount_id' => $discount?->id,
-                'frequency_months' => $discount?->frequency_months,
+                'pricing_type' => $purchaseType,
+                'pricing_option_id' => $pricingOption->id,
+                'subscription_discount_id' => null,
+                'frequency_months' => $frequencyMonths,
                 'status' => 'pending',
                 'payment_status' => 'unpaid',
             ]);
@@ -81,44 +59,7 @@ class CheckoutService
             'price' => $order->price,
         ]);
 
-        return [
-            'order_id' => $order->id,
-            'order_uuid' => $order->order_uuid,
-            'purchase_type' => $purchaseType,
-            'pricing_type' => $order->pricing_type,
-            'price' => $order->price,
-            'currency' => $order->currency,
-            'subscription_discount' => $discount ? [
-                'id' => $discount->id,
-                'frequency_months' => $discount->frequency_months,
-                'discount_percentage' => $discount->discount_percentage,
-            ] : null,
-            'product' => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'slug' => $product->slug,
-                'base_price' => $product->base_price,
-                'micro_dose_price' => $product->micro_dose_price,
-                'sample_price' => $product->sample_price,
-                'currency' => $product->currency ?? 'USD',
-                'subscription_discounts' => $product->subscriptionDiscounts
-                    ->map(fn (CmsSubscriptionDiscount $item) => [
-                        'id' => $item->id,
-                        'frequency_months' => $item->frequency_months,
-                        'discount_percentage' => $item->discount_percentage,
-                    ])
-                    ->values()
-                    ->all(),
-            ],
-        ];
-
-        Log::info('Checkout draft response prepared', [
-            'order_id' => $order->id,
-            'order_uuid' => $order->order_uuid,
-            'payload_keys' => array_keys($response),
-        ]);
-
-        return $response;
+        return $this->buildDraftResponse($order, $product, $pricing, $pricingOption);
     }
 
     public function createCheckout(array $data): array
@@ -126,49 +67,30 @@ class CheckoutService
         Log::info('Direct checkout creation requested', [
             'product_slug' => $data['product_slug'] ?? null,
             'pricing_type' => $data['pricing_type'] ?? null,
+            'pricing_option_id' => $data['pricing_option_id'] ?? null,
             'patient_id' => $data['patient_id'] ?? null,
         ]);
 
-        $product = CmsProduct::where('slug', $data['product_slug'])->first();
+        [$product, $pricing, $pricingOption] = $this->resolveCheckoutSelection($data);
+        $purchaseType = $pricing->pricing_type;
+        $finalPrice = $this->pricingService->resolvePrice($pricingOption);
+        $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->pricingService->resolveFrequencyMonths($pricingOption)
+            : null;
 
-        if (! $product) {
-            abort(404, 'Product not found.');
-        }
-
-        $basePrice = $this->pricingService->getBasePrice($product, $data['pricing_type']);
-
-        $purchaseType = 'one_time';
-        $discount = null;
-        $finalPrice = $basePrice;
-
-        if (! empty($data['subscription_discount_id'])) {
-            $discount = CmsSubscriptionDiscount::where('id', $data['subscription_discount_id'])
-                ->where('product_id', $product->id)
-                ->first();
-
-            if (! $discount) {
-                throw new InvalidArgumentException('Invalid subscription discount selected.');
-            }
-
-            $purchaseType = 'subscription';
-            $finalPrice = $this->pricingService->applyDiscount(
-                $basePrice,
-                (float) $discount->discount_percentage
-            );
-        }
-
-        $order = DB::transaction(function () use ($data, $product, $purchaseType, $discount, $finalPrice) {
+        $order = DB::transaction(function () use ($data, $product, $purchaseType, $pricingOption, $finalPrice, $frequencyMonths) {
             return Order::create([
                 'patient_id' => $data['patient_id'],
                 'product_id' => $product->id,
                 'price' => $finalPrice,
-                'currency' => $product->currency ?? 'USD',
+                'currency' => $this->pricingService->resolveCurrency($product),
                 'subscription_id' => null,
-                'billing_cycle_number' => $purchaseType === 'subscription' ? 1 : null,
+                'billing_cycle_number' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 1 : null,
                 'purchase_type' => $purchaseType,
-                'pricing_type' => $data['pricing_type'],
-                'subscription_discount_id' => $discount?->id,
-                'frequency_months' => $discount?->frequency_months,
+                'pricing_type' => $purchaseType,
+                'pricing_option_id' => $pricingOption->id,
+                'subscription_discount_id' => null,
+                'frequency_months' => $frequencyMonths,
                 'status' => 'pending',
                 'payment_status' => 'unpaid',
             ]);
@@ -182,41 +104,43 @@ class CheckoutService
         return $this->createCheckoutForOrder($order, $product);
     }
 
-    public function createCheckoutForOrder(Order $order, ?CmsProduct $product = null): array
+    public function createCheckoutForOrder(Order $order, ?Product $product = null): array
     {
         Stripe::setApiKey(config('services.stripe.secret'));
 
-        $order->loadMissing('subscriptionDiscount');
-
-        $product = $product ?? CmsProduct::find($order->product_id);
+        $order->loadMissing('pricingOption');
+        $product = $product ?? Product::with('coverImage')->find($order->product_id);
+        $pricingOption = $order->pricingOption;
 
         if (! $product) {
             abort(404, 'Product not found for checkout.');
         }
 
+        if (! $pricingOption) {
+            abort(422, 'Pricing option not found for checkout.');
+        }
+
         $purchaseType = $order->purchase_type;
-        $discount = $order->subscriptionDiscount;
-        $durationMonths = max(1, (int) ($order->frequency_months ?? $discount?->frequency_months ?? 1));
-        $finalPrice = $order->price;
+        $finalPrice = $this->pricingService->resolvePrice($pricingOption);
+        $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->pricingService->resolveFrequencyMonths($pricingOption)
+            : null;
+        $recurring = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->pricingService->resolveRecurringConfig($pricingOption)
+            : null;
 
-        if ($purchaseType === 'subscription') {
-            if (! $discount) {
-                abort(422, 'Subscription discount is required for subscription purchases.');
-            }
+        if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION && ! $recurring) {
+            abort(422, 'Selected subscription option is not configured for recurring checkout.');
+        }
 
-            $basePrice = $this->pricingService->getBasePrice($product, $order->pricing_type);
-            $finalPrice = $this->pricingService->applyDiscount($basePrice, (float) $discount->discount_percentage);
-            $durationMonths = max(1, (int) $discount->frequency_months);
-
-            if ((float) $order->price !== (float) $finalPrice || $order->frequency_months !== $durationMonths) {
-                $order->price = $finalPrice;
-                $order->frequency_months = $durationMonths;
-                $order->save();
-            }
+        if ((float) $order->price !== (float) $finalPrice || $order->frequency_months !== $frequencyMonths) {
+            $order->price = $finalPrice;
+            $order->frequency_months = $frequencyMonths;
+            $order->save();
         }
 
         $params = [
-            'mode' => $purchaseType === 'subscription' ? 'subscription' : 'payment',
+            'mode' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 'subscription' : 'payment',
             'success_url' => config('services.stripe.success_url'),
             'cancel_url' => config('services.stripe.cancel_url'),
             'line_items' => [],
@@ -226,40 +150,38 @@ class CheckoutService
                 'patient_id' => (string) ($order->patient_id ?? ''),
                 'purchase_type' => $purchaseType,
                 'product_id' => (string) $product->id,
-                'subscription_discount_id' => $discount?->id,
-                'frequency_months' => $durationMonths,
+                'pricing_option_id' => (string) $pricingOption->id,
+                'frequency_months' => $frequencyMonths,
             ],
         ];
 
         $lineItem = [
             'price_data' => [
-                'currency' => strtolower($order->currency ?? $product->currency ?? 'usd'),
+                'currency' => strtolower($order->currency ?? 'usd'),
                 'product_data' => [
                     'name' => $product->name,
+                    'description' => $pricingOption->label,
                 ],
-                'unit_amount' => (int) round((float) $finalPrice * 100),
+                'unit_amount' => (int) round($finalPrice * 100),
             ],
             'quantity' => 1,
         ];
 
-        if ($purchaseType === 'subscription') {
-            $lineItem['price_data']['recurring'] = [
-                'interval' => 'month',
-                'interval_count' => 1,
-            ];
+        if ($recurring) {
+            $lineItem['price_data']['recurring'] = $recurring;
         }
 
         $params['line_items'][] = $lineItem;
 
-        if ($purchaseType === 'subscription') {
+        if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION) {
             $params['subscription_data'] = [
                 'metadata' => [
                     'order_id' => (string) $order->id,
                     'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) ($order->patient_id ?? ''),
                     'product_id' => (string) $product->id,
-                    'subscription_discount_id' => $discount?->id,
-                    'frequency_months' => $durationMonths,
+                    'pricing_option_id' => (string) $pricingOption->id,
+                    'frequency_months' => $frequencyMonths,
                 ],
             ];
         } else {
@@ -268,6 +190,7 @@ class CheckoutService
                     'order_id' => (string) $order->id,
                     'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) ($order->patient_id ?? ''),
+                    'pricing_option_id' => (string) $pricingOption->id,
                 ],
             ];
         }
@@ -306,6 +229,79 @@ class CheckoutService
             'order_uuid' => $order->order_uuid,
             'checkout_id' => $session->id,
             'checkout_url' => $session->url,
+        ];
+    }
+
+    protected function resolveCheckoutSelection(array $data): array
+    {
+        $product = Product::query()
+            ->with([
+                'coverImage',
+                'pricing' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->with(['options' => fn ($options) => $options->orderBy('sort_order')]),
+            ])
+            ->live()
+            ->where('slug', $data['product_slug'])
+            ->first();
+
+        if (! $product) {
+            abort(404, 'Product not found.');
+        }
+
+        $selection = $this->pricingService->resolveSelection(
+            $product,
+            $data['pricing_type'],
+            $data['pricing_option_id']
+        );
+
+        return [$product, $selection['pricing'], $selection['option']];
+    }
+
+    protected function buildDraftResponse(Order $order, Product $product, object $pricing, PricingOption $pricingOption): array
+    {
+        $frequencyMonths = $pricing->pricing_type === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->pricingService->resolveFrequencyMonths($pricingOption)
+            : null;
+
+        return [
+            'order_id' => $order->id,
+            'order_uuid' => $order->order_uuid,
+            'purchase_type' => $order->purchase_type,
+            'pricing_type' => $order->pricing_type,
+            'price' => $order->price,
+            'currency' => $order->currency,
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'category' => $product->category,
+                'description' => $product->description,
+                'cover_image' => $product->coverImage ? [
+                    'id' => $product->coverImage->id,
+                    'image_url' => $product->coverImage->image_url,
+                    'image_type' => $product->coverImage->image_type,
+                ] : null,
+            ],
+            'pricing' => [
+                'id' => $pricing->id,
+                'pricing_type' => $pricing->pricing_type,
+                'title' => $pricing->title,
+                'description' => $pricing->description,
+                'selected_option' => [
+                    'id' => $pricingOption->id,
+                    'label' => $pricingOption->label,
+                    'billing_interval' => $pricingOption->billing_interval,
+                    'interval_count' => $pricingOption->interval_count,
+                    'price' => $pricingOption->price,
+                    'discount_percent' => $pricingOption->discount_percent,
+                    'final_price' => $pricingOption->final_price,
+                    'sort_order' => $pricingOption->sort_order,
+                    'is_default' => $pricingOption->is_default,
+                    'metadata' => $pricingOption->metadata,
+                ],
+                'frequency_months' => $frequencyMonths,
+            ],
         ];
     }
 }

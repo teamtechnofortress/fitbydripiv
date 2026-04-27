@@ -40,7 +40,7 @@ class CheckoutController extends Controller
 
     public function showBySession(string $sessionId): JsonResponse
     {
-        $order = Order::with('product')->where('stripe_checkout_id', $sessionId)->first();
+        $order = Order::with(['product.coverImage', 'pricingOption'])->where('stripe_checkout_id', $sessionId)->first();
 
         if (! $order) {
             return response()->json([
@@ -60,10 +60,23 @@ class CheckoutController extends Controller
                 'id' => $order->product->id,
                 'name' => $order->product->name,
                 'slug' => $order->product->slug,
-                'currency' => $order->product->currency,
-                'base_price' => $order->product->base_price,
-                'micro_dose_price' => $order->product->micro_dose_price,
-                'sample_price' => $order->product->sample_price,
+                'category' => $order->product->category,
+                'description' => $order->product->description,
+                'cover_image' => $order->product->coverImage ? [
+                    'id' => $order->product->coverImage->id,
+                    'image_url' => $order->product->coverImage->image_url,
+                    'image_type' => $order->product->coverImage->image_type,
+                ] : null,
+            ] : null,
+            'pricing_option' => $order->pricingOption ? [
+                'id' => $order->pricingOption->id,
+                'label' => $order->pricingOption->label,
+                'billing_interval' => $order->pricingOption->billing_interval,
+                'interval_count' => $order->pricingOption->interval_count,
+                'price' => $order->pricingOption->price,
+                'discount_percent' => $order->pricingOption->discount_percent,
+                'final_price' => $order->pricingOption->final_price,
+                'metadata' => $order->pricingOption->metadata,
             ] : null,
         ]);
     }

@@ -28,8 +28,10 @@ class ProductGridSection
         $products = $query
             ->paginate($limit, ['*'], $pageName)
             ->withQueryString()
-            ->through(fn (Product $product) => static::serializeProductCard($product))
             ->toArray();
+
+        $items = $products['data'] ?? [];
+        unset($products['data']);
 
         return [
             'id' => $section->id,
@@ -40,9 +42,15 @@ class ProductGridSection
             'content' => $config,
             'image' => $section->image,
             'sort_order' => $section->sort_order,
+            'source' => $source,
+            'products' => $items,
+            'pagination' => $products,
             'data' => [
                 'source' => $source,
-                'products' => $products,
+                'products' => [
+                    'items' => $items,
+                    'pagination' => $products,
+                ],
             ],
         ];
     }
@@ -92,21 +100,5 @@ class ProductGridSection
     protected static function normalizeCategoryKey(string $value): string
     {
         return str_replace('-', '_', Str::slug($value, '-'));
-    }
-
-    protected static function serializeProductCard(Product $product): array
-    {
-        return [
-            'id' => $product->id,
-            'slug' => $product->slug,
-            'name' => $product->name,
-            'category' => $product->category,
-            'description' => $product->description,
-            'cover_image' => $product->coverImage ? [
-                'id' => $product->coverImage->id,
-                'image_url' => $product->coverImage->image_url,
-                'image_type' => $product->coverImage->image_type,
-            ] : null,
-        ];
     }
 }

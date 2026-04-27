@@ -17,9 +17,9 @@ class CreateCheckoutRequest extends FormRequest
     {
         return [
             'patient_id' => ['required', 'integer', 'exists:patient,id'],
-            'product_slug' => ['required', 'string'],
+            'product_slug' => ['required', 'string', 'exists:products,slug'],
             'pricing_type' => ['required', Rule::in(Order::PRICING_TYPES)],
-            'subscription_discount_id' => ['nullable', 'uuid'],
+            'pricing_option_id' => ['required', 'uuid', 'exists:pricing_options,id'],
         ];
     }
 }

@@ -130,13 +130,14 @@ class StripeWebhookService
 
             $stripeSubscriptionId = $session->subscription ?? null;
             $frequency            = $this->resolveFrequencyMonths($order);
+            $totalCycles          = $this->resolveTotalCycles($order);
 
             $subscription = Subscription::create([
                 'order_id'                => $order->id,
                 'patient_id'              => $order->patient_id,
                 'product_id'              => $order->product_id,
                 'current_cycle_number'    => 1,
-                'total_cycles'            => $this->resolveTotalCycles($order),
+                'total_cycles'            => $totalCycles,
                 'stripe_subscription_id'  => $stripeSubscriptionId,
                 'stripe_customer_id'      => $session->customer ?? null,
                 'billing_frequency_months' => $frequency,
@@ -152,7 +153,7 @@ class StripeWebhookService
                 'billing_cycle_number' => 1,
             ]);
 
-            if ($stripeSubscriptionId && $frequency > 0) {
+            if ($stripeSubscriptionId && $frequency > 0 && $totalCycles !== null) {
                 Stripe::setApiKey(config('services.stripe.secret'));
                 try {
                     $stripeSubscription = StripeSubscriptionApi::retrieve($stripeSubscriptionId);
@@ -283,7 +284,8 @@ class StripeWebhookService
             'subscription_id'          => $subscription->id,
             'billing_cycle_number'     => $nextCycle,
             'purchase_type'            => 'subscription',
-            'pricing_type'             => $subscription->order?->pricing_type ?? 'base',
+            'pricing_type'             => $subscription->order?->pricing_type ?? 'subscription',
+            'pricing_option_id'        => $subscription->order?->pricing_option_id,
             'subscription_discount_id' => $subscription->order?->subscription_discount_id,
             'status'                   => 'completed',
             'payment_status'           => 'paid',
@@ -577,40 +579,55 @@ class StripeWebhookService
 
     protected function resolveTotalCycles(Order $order): ?int
     {
-        if (! $order->subscription_discount_id) {
+        if (! $order->pricing_option_id) {
             return null;
         }
 
-        $discount = DB::table('cms_subscription_discounts')
-            ->where('id', $order->subscription_discount_id)
+        $option = DB::table('pricing_options')
+            ->where('id', $order->pricing_option_id)
             ->first();
 
-        return $discount?->frequency_months ? (int) $discount->frequency_months : null;
+        $metadata = is_string($option?->metadata) ? json_decode($option->metadata, true) : null;
+
+        if (! is_array($metadata) || ! isset($metadata['total_cycles'])) {
+            return null;
+        }
+
+        return max(1, (int) $metadata['total_cycles']);
     }
 
     protected function resolveFrequencyMonths(Order $order): int
     {
-        if (! $order->subscription_discount_id) {
+        if (! $order->pricing_option_id) {
             return 1;
         }
 
-        $discount = DB::table('cms_subscription_discounts')
-            ->where('id', $order->subscription_discount_id)
+        $option = DB::table('pricing_options')
+            ->where('id', $order->pricing_option_id)
             ->first();
 
-        return (int) ($discount?->frequency_months ?? 1);
+        if (! $option) {
+            return 1;
+        }
+
+        return match ($option->billing_interval) {
+            'month' => max(1, (int) $option->interval_count),
+            'year' => max(1, (int) $option->interval_count) * 12,
+            'week', 'day' => 1,
+            default => 1,
+        };
     }
 
     protected function resolveDiscountPercentage(Order $order): float
     {
-        if (! $order->subscription_discount_id) {
+        if (! $order->pricing_option_id) {
             return 0.0;
         }
 
-        $discount = DB::table('cms_subscription_discounts')
-            ->where('id', $order->subscription_discount_id)
+        $option = DB::table('pricing_options')
+            ->where('id', $order->pricing_option_id)
             ->first();
 
-        return round((float) ($discount?->discount_percentage ?? 0), 2);
+        return round((float) ($option?->discount_percent ?? 0), 2);
     }
 }

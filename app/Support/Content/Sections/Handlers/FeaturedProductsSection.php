@@ -12,6 +12,10 @@ class FeaturedProductsSection
         $config = is_array($section->content) ? $section->content : [];
         $limit = max(1, (int) ($config['limit'] ?? 6));
 
+        if (! empty($config['cta_label']) && empty($config['cta_link_mode'])) {
+            $config['cta_link_mode'] = 'product_page';
+        }
+
         $products = Product::query()
             ->with('coverImage')
             ->live()
@@ -21,10 +25,15 @@ class FeaturedProductsSection
             ->get()
             ->map(fn (Product $product) => [
                 'id' => $product->id,
+                'slug' => $product->slug,
                 'name' => $product->name,
                 'category' => $product->category,
                 'description' => $product->description,
+                'is_featured' => $product->is_featured,
+                'is_published' => $product->is_published,
                 'completion_status' => $product->completion_status,
+                'completion_percentage' => $product->completion_percentage,
+                'completion_step' => $product->completion_step,
                 'cover_image' => $product->coverImage ? [
                     'id' => $product->coverImage->id,
                     'image_url' => $product->coverImage->image_url,

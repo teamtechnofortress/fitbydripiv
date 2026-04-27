@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Models\CmsSubscriptionDiscount;
+use App\Models\PricingOption;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,14 +16,12 @@ class Order extends Model
 {
     use HasFactory;
 
-    public const PRICING_TYPE_BASE = 'base';
-    public const PRICING_TYPE_MICRO_DOSE = 'micro_dose';
-    public const PRICING_TYPE_SAMPLE = 'sample';
+    public const PRICING_TYPE_ONE_TIME = 'one_time';
+    public const PRICING_TYPE_SUBSCRIPTION = 'subscription';
 
     public const PRICING_TYPES = [
-        self::PRICING_TYPE_BASE,
-        self::PRICING_TYPE_MICRO_DOSE,
-        self::PRICING_TYPE_SAMPLE,
+        self::PRICING_TYPE_ONE_TIME,
+        self::PRICING_TYPE_SUBSCRIPTION,
     ];
 
     protected $fillable = [
@@ -34,6 +34,7 @@ class Order extends Model
         'billing_cycle_number',
         'purchase_type',
         'pricing_type',
+        'pricing_option_id',
         'subscription_discount_id',
         'frequency_months',
         'status',
@@ -69,7 +70,12 @@ class Order extends Model
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(CmsProduct::class, 'product_id', 'id');
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function pricingOption(): BelongsTo
+    {
+        return $this->belongsTo(PricingOption::class, 'pricing_option_id');
     }
 
     public function subscriptionDiscount(): BelongsTo

@@ -25,6 +25,10 @@ class ProductStepController extends Controller
             'success' => true,
             'data' => [
                 'product_id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'category' => $product->category,
+                'description' => $product->description,
                 'completion_status' => $product->completion_status,
                 'completion_percentage' => $product->completion_percentage,
                 'completion_step' => $product->completion_step,
@@ -42,6 +46,7 @@ class ProductStepController extends Controller
             'data' => [
                 'product_id' => $product->id,
                 'name' => $product->name,
+                'slug' => $product->slug,
                 'category' => $product->category,
                 'description' => $product->description,
                 'cover_image_id' => $product->cover_image_id,

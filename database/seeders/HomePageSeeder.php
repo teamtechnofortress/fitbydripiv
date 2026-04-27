@@ -68,6 +68,7 @@ class HomePageSeeder extends Seeder
                 'limit' => 6,
                 'variant' => 'carousel_cards',
                 'cta_label' => 'View Details',
+                'cta_link_mode' => 'product_page',
             ],
             'sort_order' => 3,
         ]);

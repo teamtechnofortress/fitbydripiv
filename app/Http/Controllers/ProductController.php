@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Repositories\ProductRepository;
-use App\Services\Content\Resolvers\ProductPageResolver;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,8 +13,7 @@ class ProductController extends Controller
 {
     public function __construct(
         protected ProductRepository $productRepository,
-        protected ProductService $productService,
-        protected ProductPageResolver $productPageResolver
+        protected ProductService $productService
     ) {
     }
 
@@ -142,18 +141,54 @@ class ProductController extends Controller
 
     public function preview(string $productId): JsonResponse
     {
-        $preview = $this->productPageResolver->previewById($productId);
+        Log::info('Admin product preview requested', [
+            'product_id' => $productId,
+        ]);
 
-        if (! $preview) {
+        Log::info('Admin product preview: querying product', [
+            'product_id' => $productId,
+        ]);
+
+        $product = Product::query()
+            ->with([
+                'coverImage',
+                'images',
+                'benefits',
+                'researchLinks',
+                'ingredients',
+                'faqs' => function ($q) {
+                    $q->where('is_active', true);
+                },
+            ])
+            ->find($productId);
+
+        Log::info('Admin product preview: product query returned', [
+            'product_id' => $productId,
+            'found' => $product !== null,
+            'slug' => $product?->slug,
+            'is_published' => $product?->is_published,
+            'completion_status' => $product?->completion_status,
+        ]);
+
+        if (! $product) {
+            Log::warning('Admin product preview not found', [
+                'product_id' => $productId,
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Product preview not found.',
             ], 404);
         }
 
+        Log::info('Admin product preview response', [
+            'product_id' => $productId,
+            'data' => $product,
+        ]);
+
         return response()->json([
             'success' => true,
-            'data' => $preview,
+            'data' => $product,
         ]);
     }
 

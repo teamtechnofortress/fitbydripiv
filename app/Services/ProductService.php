@@ -29,6 +29,7 @@ class ProductService
             $product = new Product();
             $product->fill($this->filterProductAttributes($data, [
                 'name',
+                'slug',
                 'category',
                 'description',
                 'is_featured',
@@ -54,6 +55,7 @@ class ProductService
 
             $product->fill($this->filterProductAttributes($data, [
                 'name',
+                'slug',
                 'category',
                 'description',
             ]));
@@ -332,15 +334,19 @@ class ProductService
 
     protected function syncProductSlug(Product $product): void
     {
-        if (empty($product->name)) {
+        if (empty($product->name) && empty($product->slug)) {
             return;
         }
 
-        if (! $product->isDirty('name') && ! empty($product->slug)) {
+        if (! $product->isDirty('name') && ! $product->isDirty('slug') && ! empty($product->slug)) {
             return;
         }
 
-        $baseSlug = Str::slug($product->name);
+        $baseSlug = Str::slug($product->slug ?: $product->name);
+
+        if ($baseSlug === '') {
+            $baseSlug = empty($product->name) ? 'product' : Str::slug($product->name);
+        }
 
         if ($baseSlug === '') {
             $baseSlug = 'product';

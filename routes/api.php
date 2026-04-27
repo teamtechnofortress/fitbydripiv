@@ -394,6 +394,7 @@ Route::prefix('v1')->group( function(){
     });
 
     Route::get('layout', [LayoutController::class, 'show']);
+    Route::get('products/{slug}/pricing', [CmsPublicController::class, 'getProductPricing']);
     Route::get('pages', [ContentPublicController::class, 'getPages']);
     Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug']);
 

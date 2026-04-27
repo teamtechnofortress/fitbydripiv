@@ -9,32 +9,96 @@ use App\Models\ProductBenefit;
 use App\Models\ProductPricing;
 use App\Models\PricingOption;
 use App\Models\ProductResearchLink;
+use App\Models\Ingredient;
+use App\Models\ProductIngredientMap;
 use App\Models\Faq;
-use App\Models\CmsCategory;
 
 class ProductSeeder extends Seeder
 {
     public function run(): void
-{
-    $categories = CmsCategory::pluck('id', 'slug')->toArray();
+    {
+        $this->seedIngredientCatalog();
 
-    $this->seedSemaglutide($categories);
-    $this->seedTirzepatide($categories);
-    $this->seedB12($categories);
-    $this->seedGlutathione($categories);
-    $this->seedNad($categories);
-}
+        $this->seedSemaglutide();
+        $this->seedTirzepatide();
+        $this->seedB12();
+        $this->seedGlutathione();
+        $this->seedNad();
+
+        $this->syncRequestedProductIngredientMappings();
+    }
+
+    private function seedIngredientCatalog(): void
+    {
+        $ingredientNames = collect($this->requestedProductIngredientMappings())
+            ->pluck('ingredients')
+            ->flatten()
+            ->unique()
+            ->values();
+
+        foreach ($ingredientNames as $ingredientName) {
+            Ingredient::firstOrCreate(['name' => $ingredientName]);
+        }
+    }
+
+    private function requestedProductIngredientMappings(): array
+    {
+        return [
+            [
+                'product' => 'Semaglutide',
+                'ingredients' => ['Semaglutide'],
+            ],
+            [
+                'product' => 'Semaglutide + B12',
+                'ingredients' => ['Semaglutide', 'Vitamin B12'],
+            ],
+            [
+                'product' => 'Tirzepatide',
+                'ingredients' => ['Tirzepatide'],
+            ],
+            [
+                'product' => 'Fat Burn Blend',
+                'ingredients' => ['L-Carnitine', 'Vitamin B12', 'Methionine', 'Inositol', 'Choline'],
+            ],
+        ];
+    }
+
+    private function syncRequestedProductIngredientMappings(): void
+    {
+        foreach ($this->requestedProductIngredientMappings() as $mapping) {
+            $product = Product::where('name', $mapping['product'])->first();
+
+            if (! $product) {
+                continue;
+            }
+
+            ProductIngredientMap::where('product_id', $product->id)->delete();
+
+            foreach ($mapping['ingredients'] as $index => $ingredientName) {
+                $ingredient = Ingredient::where('name', $ingredientName)->firstOrFail();
+
+                ProductIngredientMap::create([
+                    'product_id' => $product->id,
+                    'ingredient_id' => $ingredient->id,
+                    'sort_order' => $index + 1,
+                ]);
+            }
+
+            $product->key_ingredients = implode(', ', $mapping['ingredients']);
+            $product->save();
+        }
+    }
 
     // ─────────────────────────────────────────────
     // SEMAGLUTIDE
     // ─────────────────────────────────────────────
 
-    private function seedSemaglutide(array $categories): void
+    private function seedSemaglutide(): void
     {
         /** @var Product $product */
         $product = Product::updateOrCreate(['slug' => 'semaglutide'], [
             'name'                          => 'Semaglutide',
-            'category_id'                   => $categories['weight-loss'],
+            'category'                      => $this->normalizeProductCategory('weight-loss'),
             'description'                   => 'Utilize Compounded Semaglutide for Your Weight Loss Goals AND Improve Metabolic Health. A high percentage seeing results.',
             'about_treatment'               => "A high percentage of Semaglutide patients are seeing beneficial prescription weight loss therapy results \xe2\x80\x93 losing weekly, monthly and more. Since being prescribed, patients report significant improvements in weight, energy, physical health, and overall confidence. Our comprehensive program includes medical oversight, customized dosing, and continuous support throughout your weight loss journey. Complete our Telehealth intake about your Health and Goals.",
             'how_it_works'                  => 'Semaglutide is a GLP-1 receptor agonist that mimics a natural hormone your body produces. It works by regulating appetite, slowing gastric emptying, and improving insulin sensitivity. This helps you feel fuller longer, reduces cravings, and supports sustainable weight loss. The medication also improves metabolic health markers including blood sugar control. When combined with lifestyle changes, Semaglutide provides powerful weight loss results with medical supervision and support.',
@@ -42,12 +106,12 @@ class ProductSeeder extends Seeder
             'treatment_duration'            => 'Results typically seen within 2-4 weeks of starting therapy. Significant weight loss develops over 3-6 months. Treatment duration varies based on individual goals, response, and health markers. Continuous medical oversight throughout.',
             'usage_instructions'            => 'Administered as a once-weekly subcutaneous injection (under the skin). Dosage is gradually increased under medical supervision to optimize results and minimize side effects. Our team provides complete injection training and ongoing support.',
             'research_description'          => null,
-            'clinical_research_description' => null,
+            'clinical_research_description' => 'Clinical research supports Semaglutide as an effective GLP-1 receptor agonist for chronic weight management and metabolic health improvement when used with medical oversight and lifestyle changes.',
             'is_featured'                   => true,
             'is_published'                  => true,
             'completion_status'             => 'complete',
             'completion_percentage'         => 100,
-            'completion_step'               => 5,
+            'completion_step'               => 6,
         ]);
 
         $this->upsertCoverImage($product, '/images/simagulatide.png');
@@ -62,6 +126,10 @@ class ProductSeeder extends Seeder
             'Cost Effective - Affordable monthly therapy pricing',
             'Convenient Dosing - Once-weekly injection',
             'Medical Supervision - Comprehensive professional support',
+        ]);
+
+        $this->syncIngredients($product, [
+            ['name' => 'Semaglutide', 'description' => 'GLP-1 receptor agonist used for weight management and metabolic support.'],
         ]);
 
         $this->syncSubscriptionPricing($product, basePrice: 140.00, microDosePrice: 122.50, samplePrice: 59.50);
@@ -112,12 +180,12 @@ class ProductSeeder extends Seeder
     // TIRZEPATIDE
     // ─────────────────────────────────────────────
 
-    private function seedTirzepatide(array $categories): void
+    private function seedTirzepatide(): void
     {
         /** @var Product $product */
         $product = Product::updateOrCreate(['slug' => 'tirzepatide'], [
             'name'                          => 'Tirzepatide',
-            'category_id'                   => $categories['weight-loss'],
+            'category'                      => $this->normalizeProductCategory('weight-loss'),
             'description'                   => 'A High Percentage of Tirzepatide Patients Are Seeing Healthier Swiss Being Prescription Weight Loss Therapy Results.',
             'about_treatment'               => "Healthier SWIMM BEING Prescription Weight Loss Therapy - utilizing compounded Tirzepatide for your weight loss goals AND improved metabolic health. Patients report significant weight loss results, increased energy, improved physical health, enhanced confidence of appearance, and better overall wellbeing. This dual-action medication activates both GIP and GLP-1 receptors for superior results. Complete our Telehealth intake about your Health and Goals, and our medical provider will review for eligibility.",
             'how_it_works'                  => 'Tirzepatide is an advanced dual-action medication that activates both GIP (glucose-dependent insulinotropic polypeptide) and GLP-1 (glucagon-like peptide-1) receptors. This dual activation provides superior appetite suppression, improved insulin sensitivity, and enhanced metabolic benefits compared to single-action medications. It helps you feel fuller longer, reduces cravings, improves energy expenditure, and supports more effective weight loss. Combined with lifestyle changes and medical supervision, Tirzepatide offers powerful results for your health goals.',
@@ -125,12 +193,12 @@ class ProductSeeder extends Seeder
             'treatment_duration'            => 'Initial results within 2-4 weeks. Significant weight loss develops over 3-6 months of treatment. Optimal effects achieved with consistent use and lifestyle modifications. Treatment duration personalized to individual goals and response.',
             'usage_instructions'            => 'Administered as once-weekly subcutaneous injection. Gradual dose escalation under medical supervision to optimize results and tolerance. Complete injection training provided. Continuous support throughout your journey.',
             'research_description'          => null,
-            'clinical_research_description' => null,
+            'clinical_research_description' => 'Clinical studies support Tirzepatide for significant weight loss and improved glycemic control through its dual GIP and GLP-1 receptor activity.',
             'is_featured'                   => true,
             'is_published'                  => true,
             'completion_status'             => 'complete',
             'completion_percentage'         => 100,
-            'completion_step'               => 5,
+            'completion_step'               => 6,
         ]);
 
         $this->upsertCoverImage($product, '/images/Tirziptide+b12.png');
@@ -146,6 +214,10 @@ class ProductSeeder extends Seeder
             'Medical Oversight - Continuous professional support',
             'Convenient Dosing - Once-weekly injection',
             'Comprehensive Support - Full telehealth support system',
+        ]);
+
+        $this->syncIngredients($product, [
+            ['name' => 'Tirzepatide', 'description' => 'Dual GIP and GLP-1 receptor agonist for weight loss and metabolic support.'],
         ]);
 
         $this->syncSubscriptionPricing($product, basePrice: 150.00, microDosePrice: 131.25, samplePrice: 63.75);
@@ -210,12 +282,12 @@ class ProductSeeder extends Seeder
     // B12
     // ─────────────────────────────────────────────
 
-    private function seedB12(array $categories): void
+    private function seedB12(): void
     {
         /** @var Product $product */
         $product = Product::updateOrCreate(['slug' => 'b12-injection'], [
             'name'                          => 'B12 (Methylcobalamin)',
-            'category_id'                   => $categories['wellness'],
+            'category'                      => $this->normalizeProductCategory('wellness'),
             'description'                   => 'Boost Energy, Enhance Metabolism, and Support Nervous System Health',
             'about_treatment'               => "Vitamin B12 (Methylcobalamin) is an essential nutrient that plays a crucial role in energy production, red blood cell formation, DNA synthesis, and neurological function. As we age or face dietary restrictions, B12 deficiency becomes increasingly common, leading to fatigue, cognitive decline, and metabolic issues. Our pharmaceutical-grade B12 injections bypass digestive limitations, delivering this vital nutrient directly into your system for maximum absorption and immediate benefits. Unlike oral supplements that lose potency during digestion, injectable B12 provides 100% bioavailability, ensuring your body receives the full therapeutic dose. Regular B12 supplementation supports healthy energy levels, mental clarity, cardiovascular health, and overall vitality.",
             'how_it_works'                  => 'Vitamin B12 (Methylcobalamin) is the active, bioavailable form of B12 that requires no conversion in the body. It serves as a crucial cofactor in cellular metabolism, particularly in the conversion of homocysteine to methionine and the metabolism of fatty acids. B12 is essential for myelin synthesis, protecting nerve cells and ensuring proper neurological function. It also plays a vital role in red blood cell formation in bone marrow and DNA replication in all cells. Injectable B12 bypasses the gastrointestinal tract, avoiding absorption issues caused by age, medications, or digestive conditions. The methylcobalamin form is immediately utilized by the body for energy production in mitochondria, supporting ATP synthesis and combating fatigue at the cellular level.',
@@ -223,12 +295,12 @@ class ProductSeeder extends Seeder
             'treatment_duration'            => 'Most patients notice increased energy within 24-48 hours after their first injection. Optimal benefits accumulate over 4-8 weeks with regular administration. Monthly maintenance injections help sustain therapeutic B12 levels and prevent deficiency symptoms from returning.',
             'usage_instructions'            => 'B12 injections are typically administered intramuscularly (IM) into the deltoid or gluteal muscle. Initial therapy may involve weekly injections for 4-6 weeks to build adequate stores, followed by monthly maintenance injections. Dosing is customized based on your B12 levels, symptoms, and health goals. Our medical team will provide detailed injection instructions and ongoing support throughout your treatment.',
             'research_description'          => null,
-            'clinical_research_description' => null,
+            'clinical_research_description' => 'Clinical and therapeutic literature supports Methylcobalamin supplementation for correcting B12 deficiency, supporting neurologic health, and improving energy metabolism.',
             'is_featured'                   => true,
             'is_published'                  => true,
             'completion_status'             => 'complete',
             'completion_percentage'         => 100,
-            'completion_step'               => 5,
+            'completion_step'               => 6,
         ]);
 
         $this->upsertCoverImage($product, '/images/B12.png');
@@ -244,6 +316,12 @@ class ProductSeeder extends Seeder
             'DNA Synthesis and Cellular Health',
             'Superior Bioavailability via Injection',
             'Safe and Well-Tolerated',
+        ]);
+
+        $this->syncIngredients($product, [
+            ['name' => 'Methylcobalamin (Vitamin B12)', 'description' => 'Active form of vitamin B12 used to support energy production and neurologic function.'],
+            ['name' => 'Sterile Water for Injection', 'description' => 'Sterile diluent used in injectable formulations.'],
+            ['name' => 'Benzyl Alcohol', 'description' => 'Preservative commonly used in multi-dose injectable preparations.'],
         ]);
 
         $this->syncB12Pricing($product);
@@ -312,12 +390,12 @@ class ProductSeeder extends Seeder
     // GLUTATHIONE
     // ─────────────────────────────────────────────
 
-    private function seedGlutathione(array $categories): void
+    private function seedGlutathione(): void
     {
         /** @var Product $product */
         $product = Product::updateOrCreate(['slug' => 'glutathione'], [
             'name'                          => 'Glutathione',
-            'category_id'                   => $categories['wellness'],
+            'category'                      => $this->normalizeProductCategory('wellness'),
             'description'                   => 'Boost Your Immunity, Improve Energy, Tone and Detox. Plays a prime role in protecting the body and every cell.',
             'about_treatment'               => "Glutathione is manually found in every cell in the human body and is your body's master antioxidant. Plays a prime role in protecting the body against oxidative stress and supporting energy production AND detoxification. Glutathione supports energy production, detoxification, and overall cellular health. NAD+ is also crucial for cellular health, working together with glutathione. Our therapy bypasses limitations of oral supplementation through advanced delivery methods via subcutaneous injection for maximum bioavailability and effectiveness.",
             'how_it_works'                  => "Glutathione works at the cellular level as your body's most powerful antioxidant, found in every cell. It neutralizes free radicals, supports detoxification pathways in the liver and cells, and helps protect against oxidative stress. Our therapy uses advanced delivery methods (Subcutaneous) that bypass the limitations of oral supplementation, which has reduced absorption. This ensures maximum bioavailability and cellular protection throughout your body.",
@@ -325,12 +403,12 @@ class ProductSeeder extends Seeder
             'treatment_duration'            => 'Benefits may be noticed within 2-4 weeks of consistent treatment. Optimal results typically seen over 2-3 months of regular therapy. Long-term cellular benefits continue to build.',
             'usage_instructions'            => 'Available in Subcutaneous injection for maximum bioavailability and effectiveness. Treatment frequency and method personalized based on your needs, goals, and lifestyle preferences.',
             'research_description'          => null,
-            'clinical_research_description' => null,
+            'clinical_research_description' => 'Published research describes Glutathione as a key endogenous antioxidant with roles in oxidative stress defense, detoxification, and cellular protection.',
             'is_featured'                   => true,
             'is_published'                  => true,
             'completion_status'             => 'complete',
             'completion_percentage'         => 100,
-            'completion_step'               => 5,
+            'completion_step'               => 6,
         ]);
 
         $this->upsertCoverImage($product, '/images/Glutathione.png');
@@ -343,6 +421,11 @@ class ProductSeeder extends Seeder
             'Cellular Health - Support overall cellular function and protection',
             'Anti-Aging Benefits - Promote healthy aging and longevity',
             'Enhanced Bioavailability - Superior absorption vs oral supplements',
+        ]);
+
+        $this->syncIngredients($product, [
+            ['name' => 'Glutathione (Reduced)', 'description' => 'Primary intracellular antioxidant that supports detoxification and cellular defense.'],
+            ['name' => 'Supporting Cofactors', 'description' => 'Companion nutrients included to support formulation stability and absorption.'],
         ]);
 
         $this->syncSubscriptionPricing($product, basePrice: 149.00);
@@ -399,12 +482,12 @@ class ProductSeeder extends Seeder
     // NAD+
     // ─────────────────────────────────────────────
 
-    private function seedNad(array $categories): void
+    private function seedNad(): void
     {
         /** @var Product $product */
         $product = Product::updateOrCreate(['slug' => 'nad-therapy'], [
             'name'                          => 'NAD+ Therapy',
-            'category_id'                   => $categories['longevity'],
+            'category'                      => $this->normalizeProductCategory('longevity'),
             'description'                   => 'Aging Repair Your Own Boost. NAD+ (Nicotinamide Adenine Dinucleotide) is naturally found in every cell and diminishes with age.',
             'about_treatment'               => "NAD+ is an acronym for Nicotinamide Adenine Dinucleotide - a vital coenzyme naturally found in every cell in the human body. Diminishing levels of NAD+ may assist in hyperness (aging decline). Our NAD+ therapy helps replenish these critical levels through advanced delivery methods that bypass oral limitations. Available via Subcutaneous injection for optimal cellular absorption. Support energy production, mental clarity, and anti-aging at the cellular level.",
             'how_it_works'                  => "NAD+ is essential for mitochondrial function and energy production in every cell of your body. It activates sirtuins - proteins that regulate cellular health, DNA repair, and longevity. Diminishing levels occur naturally with age, affecting energy, cognition, and cellular repair. Our therapy restores NAD+ levels through one of the best and effective delivery methods (Subcutaneous injection) that bypass traditional oral limitations and maximize absorption. This supports optimal cellular function, metabolic processes, and healthy aging throughout your entire body.",
@@ -412,12 +495,12 @@ class ProductSeeder extends Seeder
             'treatment_duration'            => 'Energy effects may be felt during or immediately after treatment. Long-term cellular benefits and anti-aging effects develop over 4-8 weeks of consistent therapy. Many patients report sustained improvements in energy and mental clarity.',
             'usage_instructions'            => 'Available in the most effective delivery form via Subcutaneous injection for high bioavailability. Treatment frequency personalized to your individual needs, goals, and lifestyle. Our medical team will provide your best option based on your telehealth information provided.',
             'research_description'          => null,
-            'clinical_research_description' => null,
+            'clinical_research_description' => 'Research on NAD+ highlights its central role in mitochondrial energy production, cellular repair pathways, and healthy aging mechanisms.',
             'is_featured'                   => true,
             'is_published'                  => true,
             'completion_status'             => 'complete',
             'completion_percentage'         => 100,
-            'completion_step'               => 5,
+            'completion_step'               => 6,
         ]);
 
         $this->upsertCoverImage($product, '/images/NAD +.png');
@@ -431,6 +514,11 @@ class ProductSeeder extends Seeder
             'Improve Memory and Focus - Better cognitive performance',
             'Multiple Delivery Methods - Oral, Nasal, IV, Subcutaneous options',
             'Bypass Oral Limitations - Superior absorption for better results',
+        ]);
+
+        $this->syncIngredients($product, [
+            ['name' => 'NAD+ (Nicotinamide Adenine Dinucleotide)', 'description' => 'Coenzyme essential for cellular energy production and metabolic function.'],
+            ['name' => 'Supporting Vitamins and Cofactors', 'description' => 'Supplemental components that support formulation performance and metabolic pathways.'],
         ]);
 
         $this->syncSubscriptionPricing($product, basePrice: 199.00);
@@ -522,19 +610,43 @@ class ProductSeeder extends Seeder
     }
 
     /**
+     * Wipe and re-seed ingredient mappings for a product.
+     */
+    private function syncIngredients(Product $product, array $ingredients): void
+    {
+        ProductIngredientMap::where('product_id', $product->id)->delete();
+
+        foreach ($ingredients as $index => $ingredient) {
+            $ingredientModel = Ingredient::firstOrCreate(
+                ['name' => $ingredient['name']],
+                ['description' => $ingredient['description'] ?? null]
+            );
+
+            if (! empty($ingredient['description']) && empty($ingredientModel->description)) {
+                $ingredientModel->description = $ingredient['description'];
+                $ingredientModel->save();
+            }
+
+            ProductIngredientMap::create([
+                'product_id' => $product->id,
+                'ingredient_id' => $ingredientModel->id,
+                'sort_order' => $index + 1,
+            ]);
+        }
+    }
+
+    /**
      * Wipe and re-seed all FAQs for a product via the morph relationship.
-     * scope_type = App\Models\Product, scope_id = product UUID.
+     * This keeps scope_type aligned with the enforced morph map (`product`).
      */
     private function syncFaqs(Product $product, array $faqs): void
     {
-        Faq::where('scope_type', Product::class)
+        Faq::whereIn('scope_type', [Faq::SCOPE_PRODUCT, Product::class])
             ->where('scope_id', $product->id)
             ->delete();
 
         foreach ($faqs as $index => [$question, $answer]) {
-            Faq::create([
-                'scope_type' => Product::class,
-                'scope_id'   => $product->id,
+            $product->faqs()->create([
                 'question'   => $question,
                 'answer'     => $answer,
                 'sort_order' => $index + 1,
@@ -774,5 +886,10 @@ class ProductSeeder extends Seeder
                 ],
             ],
         ]);
+    }
+
+    private function normalizeProductCategory(string $slug): string
+    {
+        return str_replace('-', '_', $slug);
     }
 }

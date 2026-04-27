@@ -2,29 +2,75 @@
 
 namespace App\Services;
 
-use App\Models\Order;
+use App\Models\PricingOption;
+use App\Models\Product;
+use App\Models\ProductPricing;
 use InvalidArgumentException;
 
 class PricingService
 {
-    public function getBasePrice(object $product, string $pricingType): float
+    /**
+     * @return array{pricing: ProductPricing, option: PricingOption}
+     */
+    public function resolveSelection(Product $product, string $pricingType, string $pricingOptionId): array
     {
-        $price = match ($pricingType) {
-            Order::PRICING_TYPE_BASE => $product->base_price,
-            Order::PRICING_TYPE_MICRO_DOSE => $product->micro_dose_price,
-            Order::PRICING_TYPE_SAMPLE => $product->sample_price,
-            default => throw new InvalidArgumentException('Invalid pricing type'),
-        };
+        $pricing = $product->pricing
+            ->firstWhere('pricing_type', $pricingType);
 
-        if ($price === null) {
+        if (! $pricing || ! $pricing->is_active) {
             throw new InvalidArgumentException("Selected pricing type '{$pricingType}' is not available.");
         }
 
-        return round((float) $price, 2);
+        $option = $pricing->options
+            ->firstWhere('id', $pricingOptionId);
+
+        if (! $option) {
+            throw new InvalidArgumentException('Selected pricing option is not valid for this product.');
+        }
+
+        if ($pricingType === 'subscription' && $option->billing_interval === 'one_time') {
+            throw new InvalidArgumentException('Subscription pricing option must use a recurring billing interval.');
+        }
+
+        if ($pricingType === 'one_time' && $option->billing_interval !== 'one_time') {
+            throw new InvalidArgumentException('One-time pricing option must use the one_time billing interval.');
+        }
+
+        return [
+            'pricing' => $pricing,
+            'option' => $option,
+        ];
     }
 
-    public function applyDiscount(float $amount, float $discountPercentage): float
+    public function resolveCurrency(Product $product): string
     {
-        return round($amount - ($amount * ($discountPercentage / 100)), 2);
+        return 'USD';
+    }
+
+    public function resolvePrice(PricingOption $option): float
+    {
+        return round((float) $option->final_price, 2);
+    }
+
+    public function resolveFrequencyMonths(PricingOption $option): ?int
+    {
+        return match ($option->billing_interval) {
+            'month' => max(1, (int) $option->interval_count),
+            'year' => max(1, (int) $option->interval_count) * 12,
+            'week', 'day' => 1,
+            default => null,
+        };
+    }
+
+    public function resolveRecurringConfig(PricingOption $option): ?array
+    {
+        if ($option->billing_interval === 'one_time') {
+            return null;
+        }
+
+        return [
+            'interval' => $option->billing_interval,
+            'interval_count' => max(1, (int) $option->interval_count),
+        ];
     }
 }
