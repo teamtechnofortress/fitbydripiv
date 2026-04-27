@@ -65,7 +65,7 @@ class SettingService
     {
         foreach ($this->definitions() as $group => $settings) {
             foreach ($settings as $key => $definition) {
-                Setting::updateOrCreate(
+                $setting = Setting::firstOrCreate(
                     ['key' => $key],
                     [
                         'value' => $definition['default'] ?? null,
@@ -73,6 +73,16 @@ class SettingService
                         'group' => $group,
                     ]
                 );
+
+                $expectedType = $definition['type'] ?? 'string';
+
+                if ($setting->type !== $expectedType || $setting->group !== $group) {
+                    $setting->fill([
+                        'type' => $expectedType,
+                        'group' => $group,
+                    ]);
+                    $setting->save();
+                }
             }
         }
     }
