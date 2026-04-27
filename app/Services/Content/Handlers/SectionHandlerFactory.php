@@ -2,7 +2,7 @@
 
 namespace App\Services\Content\Handlers;
 
-use App\Enums\SectionType;
+use App\enums\SectionType;
 use App\Models\PageSection;
 
 class SectionHandlerFactory

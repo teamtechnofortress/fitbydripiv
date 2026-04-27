@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Enums\SectionType;
+use App\enums\SectionType;
 use App\Models\Page;
 use App\Models\PageSection;
 use Illuminate\Database\Seeder;

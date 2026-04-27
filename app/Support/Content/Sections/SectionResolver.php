@@ -2,7 +2,7 @@
 
 namespace App\Support\Content\Sections;
 
-use App\Enums\SectionType;
+use App\enums\SectionType;
 use App\Models\PageSection;
 use App\Support\Content\Sections\Handlers\CategoryCardsSection;
 use App\Support\Content\Sections\Handlers\ContentBlockSection;
