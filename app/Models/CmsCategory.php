@@ -28,8 +28,5 @@ class CmsCategory extends Model
         'display_order' => 'integer',
     ];
 
-    public function products(): HasMany
-    {
-        return $this->hasMany(CmsProduct::class, 'category_id')->orderBy('display_order');
-    }
+
 }

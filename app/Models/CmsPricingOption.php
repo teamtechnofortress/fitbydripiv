@@ -31,8 +31,8 @@ class CmsPricingOption extends Model
         'display_order' => 'integer',
     ];
 
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(CmsProduct::class, 'product_id');
-    }
+    // public function product(): BelongsTo
+    // {
+    //     return $this->belongsTo(CmsProduct::class, 'product_id');
+    // }
 }

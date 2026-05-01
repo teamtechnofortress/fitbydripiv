@@ -196,6 +196,16 @@ class GlobalSourceResolver
 
     protected function socialItems(array $definition): array
     {
+        $manualItems = collect($definition['items'] ?? [])
+            ->filter(fn ($item) => is_array($item))
+            ->map(fn ($item) => $this->normalizeManualItem($item))
+            ->filter()
+            ->values();
+
+        if ($manualItems->isNotEmpty()) {
+            return $manualItems->all();
+        }
+
         $settings = app(SettingService::class);
 
         $definitions = [

@@ -12,6 +12,13 @@ class ProductRepository
         return Product::findOrFail($productId);
     }
 
+    public function findListItemById(string $productId): Product
+    {
+        return $this->baseQuery()
+            ->where('id', $productId)
+            ->firstOrFail();
+    }
+
     public function paginateAll(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         return $this->baseQuery($filters)

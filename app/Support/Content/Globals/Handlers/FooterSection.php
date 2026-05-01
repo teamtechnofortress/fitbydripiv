@@ -34,6 +34,7 @@ class FooterSection
 
         return match ($source) {
             'brand' => static::brandColumn($column, $sourceResolver),
+            'certification' => static::certificationColumn($column),
             'categories', 'static_pages', 'research_links', 'social_links' => static::linksColumn($column, $sourceResolver, $context),
             default => static::manualColumn($column),
         };
@@ -59,6 +60,22 @@ class FooterSection
             'source' => $column['source'] ?? 'manual',
             'title' => $column['title'] ?? 'Links',
             'items' => $sourceResolver->resolveItems($column, $context),
+        ];
+    }
+
+    protected static function certificationColumn(array $column): array
+    {
+        $item = collect($column['items'] ?? [])
+            ->first(fn ($item) => is_array($item)) ?? [];
+
+        return [
+            'type' => 'certification',
+            'source' => 'certification',
+            'title' => $column['title'] ?? 'Certification',
+            'items' => [[
+                'image' => $item['image'] ?? null,
+                'description' => $item['description'] ?? null,
+            ]],
         ];
     }
 

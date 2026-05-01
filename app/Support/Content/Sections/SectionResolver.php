@@ -35,7 +35,7 @@ class SectionResolver
             SectionType::SPACER => SpacerSection::handle($section),
             SectionType::PRODUCT_GRID => ProductGridSection::handle($section, $context),
             SectionType::PRODUCT_DETAILS => ProductDetailsSection::handle($section, $context),
-            SectionType::HERO => HeroSection::handle($section),
+            SectionType::HERO => HeroSection::handle($section, $context),
             SectionType::FAQ => FaqSection::handle($section),
             SectionType::SECTION_HEADER => SectionHeaderSection::handle($section),
             SectionType::FEATURED_PRODUCTS => FeaturedProductsSection::handle($section),

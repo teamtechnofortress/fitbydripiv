@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             HomePageSeeder::class,
             CategoryTemplateSeeder::class,
             GeneralFaqPageSeeder::class,
+            InstructionsPageSeeder::class,
             PrivacyPageSeeder::class,
             ProductSelectionPageSeeder::class,
             TelehealthFaqPageSeeder::class,

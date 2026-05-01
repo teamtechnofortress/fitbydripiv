@@ -139,6 +139,25 @@ class ProductController extends Controller
         ]);
     }
 
+    public function toggleFeatured(string $productId): JsonResponse
+    {
+        $product = $this->productService->toggleFeaturedProduct($productId);
+        $productListItem = $this->productRepository->findListItemById($product->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => $product->is_featured
+                ? 'Product marked as featured successfully.'
+                : 'Product removed from featured successfully.',
+            'data' => [
+                'product_id' => $product->id,
+                'is_featured' => $product->is_featured,
+                'featured_status' => $product->is_featured ? 'featured' : 'not_featured',
+                'product' => $this->transformProductListItem($productListItem),
+            ],
+        ]);
+    }
+
     public function preview(string $productId): JsonResponse
     {
         Log::info('Admin product preview requested', [

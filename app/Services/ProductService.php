@@ -190,6 +190,17 @@ class ProductService
         });
     }
 
+    public function toggleFeaturedProduct(string $productId): Product
+    {
+        return DB::transaction(function () use ($productId) {
+            $product = Product::findOrFail($productId);
+            $product->is_featured = ! $product->is_featured;
+            $product->save();
+
+            return $product->fresh();
+        });
+    }
+
     public function getStep1Data(string $productId): Product
     {
         return $this->productCompletionService->update(

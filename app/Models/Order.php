@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\CmsSubscriptionDiscount;
 use App\Models\PricingOption;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,7 +34,6 @@ class Order extends Model
         'purchase_type',
         'pricing_type',
         'pricing_option_id',
-        'subscription_discount_id',
         'frequency_months',
         'status',
         'payment_status',
@@ -76,11 +74,6 @@ class Order extends Model
     public function pricingOption(): BelongsTo
     {
         return $this->belongsTo(PricingOption::class, 'pricing_option_id');
-    }
-
-    public function subscriptionDiscount(): BelongsTo
-    {
-        return $this->belongsTo(CmsSubscriptionDiscount::class, 'subscription_discount_id');
     }
 
     public function webhooks(): MorphMany

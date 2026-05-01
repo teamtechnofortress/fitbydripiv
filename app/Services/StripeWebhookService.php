@@ -286,7 +286,6 @@ class StripeWebhookService
             'purchase_type'            => 'subscription',
             'pricing_type'             => $subscription->order?->pricing_type ?? 'subscription',
             'pricing_option_id'        => $subscription->order?->pricing_option_id,
-            'subscription_discount_id' => $subscription->order?->subscription_discount_id,
             'status'                   => 'completed',
             'payment_status'           => 'paid',
             'stripe_checkout_id'       => null,

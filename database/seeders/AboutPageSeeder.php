@@ -57,8 +57,7 @@ class AboutPageSeeder extends Seeder
             'content' => [
                 'headline' => 'Our Mission',
                 'paragraphs' => [
-                    "At FitByShot, we're dedicated to making prescription weight loss, longevity, and wellness solutions accessible and specific to your goals.",
-                    'We believe that health should be simplified and reliably delivered right to your door, with support for body, mind, and cellular health customized for your unique needs.',
+                    "At FitByShot, we're dedicated to making prescription weight loss, longevity, and wellness solutions accessible and specific to your goals. We believe that health should be simplified and reliably delivered right to your door, with support for body, mind, and cellular health customized for your unique needs.",
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -74,8 +73,7 @@ class AboutPageSeeder extends Seeder
             'content' => [
                 'headline' => 'Our Approach',
                 'paragraphs' => [
-                    'We combine cutting-edge medical treatments with personalized telehealth consultations to create treatment plans tailored to your health and wellness goals.',
-                    'Our process is simple: complete our Telehealth form about your health and goals, our medical professionals review your eligibility, and your customized prescription is delivered directly to you.',
+                    'We combine cutting-edge medical treatments with personalized telehealth consultations to create treatment plans tailored to your health and wellness goals. Our process is simple: complete our Telehealth form about your health and goals, our medical professionals review your eligibility, and your customized prescription is delivered directly to you.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -91,19 +89,10 @@ class AboutPageSeeder extends Seeder
             'content' => [
                 'headline' => 'Our Treatments',
                 'intro' => 'We offer a comprehensive range of evidence-based treatments across three key categories:',
-                'rows' => [
-                    [
-                        'label' => 'Weight Loss',
-                        'text' => 'Semaglutide and Tirzepatide for sustainable weight loss and improved metabolic health',
-                    ],
-                    [
-                        'label' => 'Wellness',
-                        'text' => 'B12 for energy and metabolism, Glutathione for immunity and detoxification',
-                    ],
-                    [
-                        'label' => 'Longevity',
-                        'text' => 'NAD+ therapy for cellular energy and healthy aging',
-                    ],
+                'bullets' => [
+                    'Weight Loss: Semaglutide and Tirzepatide for sustainable weight loss and improved metabolic health',
+                    'Wellness: B12 for energy and metabolism, Glutathione for immunity and detoxification',
+                    'Longevity: NAD+ therapy for cellular energy and healthy aging',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',

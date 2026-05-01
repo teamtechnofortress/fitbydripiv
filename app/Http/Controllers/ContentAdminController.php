@@ -377,7 +377,7 @@ class ContentAdminController extends Controller
 
             $source = $column['source'] ?? null;
 
-            if ($source !== null && ! in_array($source, ['brand', 'categories', 'static_pages', 'research_links', 'social_links', 'manual'], true)) {
+            if ($source !== null && ! in_array($source, ['brand', 'categories', 'static_pages', 'research_links', 'social_links', 'certification', 'manual'], true)) {
                 throw ValidationException::withMessages([
                     "config.columns.$index.source" => 'Footer column source is invalid.',
                 ]);
@@ -412,6 +412,22 @@ class ContentAdminController extends Controller
                     if (blank($item['article_url'] ?? null)) {
                         throw ValidationException::withMessages([
                             "config.columns.$index.items.$itemIndex.article_url" => 'Research link article_url is required.',
+                        ]);
+                    }
+                }
+            }
+
+            if ($source === 'certification') {
+                if (! is_array($column['items'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        "config.columns.$index.items" => 'Certification footer columns require an items array.',
+                    ]);
+                }
+
+                foreach ($column['items'] as $itemIndex => $item) {
+                    if (! is_array($item)) {
+                        throw ValidationException::withMessages([
+                            "config.columns.$index.items.$itemIndex" => 'Each certification item must be an object.',
                         ]);
                     }
                 }

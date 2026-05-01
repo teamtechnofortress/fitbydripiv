@@ -32,12 +32,11 @@ class HomePageSeeder extends Seeder
                 'description' => 'Support for Body, Mind & Cellular Health. Health simplified and delivered reliably right to your door.',
                 'background' => [
                     'type' => 'video',
-                    'url' => '/videos/hero-bg.mp4',
-                    'poster' => '/images/hero-poster.jpg',
+                    'url' => '/homepage.mp4',
                 ],
                 'cta' => [
                     'label' => 'Start my journey',
-                    'link' => '/telehealth',
+                    'link' => '/products/select',
                     'style' => 'primary',
                 ],
             ],
@@ -81,7 +80,6 @@ class HomePageSeeder extends Seeder
             'subtitle' => 'Intro block for categories',
             'content' => [
                 'headline' => 'Our Treatment Categories',
-                'description' => 'Choose the treatment path aligned with your health goals.',
                 'alignment' => 'center',
             ],
             'sort_order' => 4,
@@ -127,7 +125,6 @@ class HomePageSeeder extends Seeder
             'subtitle' => 'Process intro block',
             'content' => [
                 'headline' => 'How It Works',
-                'description' => 'A simple three-step process from evaluation to delivery.',
                 'alignment' => 'center',
             ],
             'sort_order' => 6,
@@ -148,19 +145,19 @@ class HomePageSeeder extends Seeder
         $this->syncItems($process, [
             [
                 'title' => 'Step 1: Intake evaluation',
-                'description' => 'Complete our secure online health questionnaire about your medical history and wellness goals.',
+                'description' => 'Complete our secure online health questionnaire about your medical history and wellness goals',
                 'icon' => 'clipboard-list',
                 'sort_order' => 1,
             ],
             [
                 'title' => 'Step 2: Prescription/Approval',
-                'description' => 'Our licensed medical providers review your information and determine eligibility.',
+                'description' => 'Our licensed medical providers review your information and determine eligibility',
                 'icon' => 'stethoscope',
                 'sort_order' => 2,
             ],
             [
                 'title' => 'Step 3: Fast Shipping',
-                'description' => 'Your prescription is compounded and shipped directly to your door with tracking.',
+                'description' => 'Your prescription is compounded and shipped directly to your door with tracking',
                 'icon' => 'truck',
                 'sort_order' => 3,
             ],
@@ -188,7 +185,7 @@ class HomePageSeeder extends Seeder
             'content' => [
                 'button' => [
                     'label' => 'Learn More',
-                    'link' => '/telehealth',
+                    'link' => '/telehealth-faq',
                     'style' => 'outline',
                 ],
                 'layout' => 'centered_cta',

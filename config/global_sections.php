@@ -56,7 +56,7 @@ return [
                     'items' => [
                         ['slug' => 'about', 'label' => 'About Us'],
                         ['slug' => 'contact', 'label' => 'Contact'],
-                        ['slug' => 'login', 'label' => 'Login'],
+                        // ['slug' => 'login', 'label' => 'Login'],
                     ],
                 ],
                 [
@@ -107,7 +107,42 @@ return [
                 [
                     'source' => 'social_links',
                     'title' => 'Connect',
-                    'items' => ['facebook', 'instagram', 'twitter', 'email'],
+                    'items' => [
+                        [
+                            'label' => 'Facebook',
+                            'href' => 'https://facebook.com/fitbyshot',
+                            'icon' => 'facebook',
+                            'external' => true,
+                        ],
+                        [
+                            'label' => 'Instagram',
+                            'href' => 'https://instagram.com/fitbyshot',
+                            'icon' => 'instagram',
+                            'external' => true,
+                        ],
+                        [
+                            'label' => 'Twitter',
+                            'href' => 'https://twitter.com/fitbyshot',
+                            'icon' => 'twitter',
+                            'external' => true,
+                        ],
+                        [
+                            'label' => 'Email',
+                            'href' => 'mailto:support@fitbyshot.com',
+                            'icon' => 'mail',
+                            'external' => false,
+                        ],
+                    ],
+                ],
+                [
+                    'source' => 'certification',
+                    'title' => 'Certification',
+                    'items' => [
+                        [
+                            'image' => null,
+                            'description' => 'Licensed and verified by...',
+                        ],
+                    ],
                 ],
             ],
             'bottom' => [

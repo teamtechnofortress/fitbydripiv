@@ -187,6 +187,7 @@ Route::prefix('v1')->group( function(){
             Route::delete('products/{productId}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
             Route::get('products/{productId}/publish-status', [ProductController::class, 'publishStatus'])->name('admin.products.publish-status');
             Route::get('products/{productId}/preview', [ProductController::class, 'preview'])->name('admin.products.preview');
+            Route::post('products/{productId}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('admin.products.toggle-featured');
             Route::post('products/{productId}/publish', [ProductController::class, 'publish'])->name('admin.products.publish');
             Route::post('products/{productId}/unpublish', [ProductController::class, 'unpublish'])->name('admin.products.unpublish');
             Route::get('products/{productId}/step-1', [ProductStepController::class, 'getStep1'])->name('admin.products.get-step1');

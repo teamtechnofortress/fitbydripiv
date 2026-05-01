@@ -57,8 +57,7 @@ class TermsPageSeeder extends Seeder
             'content' => [
                 'headline' => 'Acceptance of Terms',
                 'paragraphs' => [
-                    'By accessing or using FitByShot, you agree to these Terms of Service and any related policies referenced within them. If you do not agree to these terms, you should not use our website, telehealth workflows, or related services.',
-                    'These terms apply to your use of our content, account tools, treatment selection flows, support interactions, and all services made available through FitByShot.',
+                    "By accessing and using FitByShot's services, you agree to be bound by these Terms of Service and all applicable laws and regulations.",
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -69,13 +68,12 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_services_scope',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Scope of Services',
+            'title' => 'Medical Disclaimer',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Scope of Services',
+                'headline' => 'Medical Disclaimer',
                 'paragraphs' => [
-                    'FitByShot provides access to wellness-related content, product information, intake workflows, and telehealth coordination designed to help users explore treatment options and receive medically reviewed care when appropriate.',
-                    'Use of FitByShot does not guarantee eligibility, approval, prescription, shipment, or treatment outcomes. Any medical decision is subject to provider review and applicable clinical standards.',
+                    'Our services are provided under medical supervision. All treatments require a consultation and medical approval. Results may vary by individual. This service does not replace regular medical care.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -86,14 +84,17 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_eligibility',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Eligibility and User Responsibilities',
+            'title' => 'User Responsibilities',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Eligibility and User Responsibilities',
+                'headline' => 'User Responsibilities',
+                'intro' => 'You agree to:',
                 'bullets' => [
-                    'You must provide accurate, current, and complete information during intake, account creation, and support interactions.',
-                    'You are responsible for reviewing your information before submission and promptly updating us if your medical status, contact details, or relevant health information changes.',
-                    'You agree not to misuse the website, interfere with service operation, or submit false, misleading, or unauthorized information.',
+                    'Provide accurate and complete information',
+                    'Follow all treatment instructions',
+                    'Report any adverse effects immediately',
+                    'Maintain the confidentiality of your account',
+                    'Use services only for lawful purposes',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -104,13 +105,12 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_medical_disclaimer',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Medical and Treatment Disclaimer',
+            'title' => 'Payment Terms',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Medical and Treatment Disclaimer',
+                'headline' => 'Payment Terms',
                 'paragraphs' => [
-                    'Information on FitByShot is provided for general informational purposes and does not replace individualized medical advice, diagnosis, or treatment from a licensed professional.',
-                    'Treatment plans, prescriptions, and eligibility decisions are made only after review by qualified medical professionals. Results vary, and no outcome is guaranteed.',
+                    'Payment is required before treatment begins. Prices are subject to change. Refunds are provided according to our refund policy.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -121,13 +121,12 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_orders_and_fulfillment',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Orders, Fulfillment, and Support',
+            'title' => 'Limitation of Liability',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Orders, Fulfillment, and Support',
+                'headline' => 'Limitation of Liability',
                 'paragraphs' => [
-                    'Orders are subject to provider approval, product availability, operational review, and any applicable regulatory limitations. Shipping timelines, delivery availability, and product format may vary by treatment.',
-                    'FitByShot may modify, pause, or decline service availability where necessary for operational, compliance, clinical, or legal reasons.',
+                    'FitByShot and its affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your use of our services.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -138,13 +137,12 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_intellectual_property',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Content and Intellectual Property',
+            'title' => 'Changes to Terms',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Content and Intellectual Property',
+                'headline' => 'Changes to Terms',
                 'paragraphs' => [
-                    'All website content, branding, layouts, text, graphics, and related materials are owned by FitByShot or used under applicable rights. You may not copy, distribute, reproduce, or repurpose these materials except as allowed by law or with written permission.',
-                    'Use of our website does not transfer ownership or grant a commercial license to any FitByShot intellectual property.',
+                    'We reserve the right to modify these terms at any time. Continued use of our services after changes constitutes acceptance of the new terms.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
@@ -155,13 +153,12 @@ class TermsPageSeeder extends Seeder
         $this->upsertSection($page, [
             'section_key' => 'terms_changes_contact',
             'type' => SectionType::CONTENT_BLOCK->value,
-            'title' => 'Changes to Terms',
+            'title' => 'Contact Information',
             'subtitle' => '',
             'content' => [
-                'headline' => 'Changes to Terms',
+                'headline' => 'Contact Information',
                 'paragraphs' => [
-                    'We may update these Terms of Service from time to time to reflect service changes, legal requirements, or operational updates. Continued use of FitByShot after revisions are posted constitutes acceptance of the updated terms.',
-                    'If you have questions about these Terms of Service, please contact our support team through the contact options provided on the website.',
+                    'For questions about these Terms of Service, please contact us at Support@FitbyShot.com.',
                 ],
                 'alignment' => 'left',
                 'max_width' => 'full',
