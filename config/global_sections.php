@@ -31,7 +31,6 @@ return [
                     'type' => 'group',
                     'label' => 'Products',
                     'source' => 'categories',
-                    'items' => ['weight-loss', 'wellness', 'longevity'],
                 ],
             ],
         ],

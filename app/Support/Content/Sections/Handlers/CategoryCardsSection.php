@@ -9,10 +9,28 @@ class CategoryCardsSection
 {
     public static function handle(PageSection $section): array
     {
-        $categories = CmsCategory::query()
+        $items = CmsCategory::query()
             ->orderBy('display_order')
             ->get()
-            ->keyBy(fn (CmsCategory $category) => mb_strtolower($category->name));
+            ->map(fn (CmsCategory $category) => [
+                'id' => $category->id,
+                'title' => $category->name,
+                'description' => $category->description,
+                'icon' => null,
+                'image' => $category->banner_image,
+                'cta_text' => 'View Products',
+                'cta_link' => '/' . ltrim($category->slug, '/'),
+                'category' => [
+                    'id' => $category->id,
+                    'slug' => $category->slug,
+                    'banner_image' => $category->banner_image,
+                    'landscape_banner' => $category->landscape_banner,
+                    'background_video' => $category->background_video,
+                ],
+                'sort_order' => $category->display_order,
+            ])
+            ->values()
+            ->all();
 
         return [
             'id' => $section->id,
@@ -20,27 +38,8 @@ class CategoryCardsSection
             'type' => $section->type?->value ?? $section->getRawOriginal('type'),
             'title' => $section->title,
             'subtitle' => $section->subtitle,
-            'items' => $section->items->map(function ($item) use ($categories) {
-                $category = $categories->get(mb_strtolower((string) $item->title));
-                $slug = $category?->slug ?? strtolower(str_replace(' ', '-', (string) $item->title));
-
-                return [
-                    'id' => $item->id,
-                    'title' => $item->title,
-                    'description' => $item->description,
-                    'icon' => $item->icon,
-                    'image' => $item->image ?: $category?->banner_image,
-                    'cta_text' => 'View Products',
-                    'cta_link' => '/products?category=' . $slug,
-                    'category' => $category ? [
-                        'id' => $category->id,
-                        'slug' => $category->slug,
-                        'banner_image' => $category->banner_image,
-                        'landscape_banner' => $category->landscape_banner,
-                    ] : null,
-                    'sort_order' => $item->sort_order,
-                ];
-            })->values()->all(),
+            'content' => [],
+            'items' => $items,
         ];
     }
 }

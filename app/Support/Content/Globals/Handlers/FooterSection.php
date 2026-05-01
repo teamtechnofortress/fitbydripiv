@@ -55,11 +55,18 @@ class FooterSection
 
     protected static function linksColumn(array $column, GlobalSourceResolver $sourceResolver, array $context = []): array
     {
+        $definition = $column;
+
+        if (($column['source'] ?? null) === 'categories') {
+            // Footer category columns should always reflect the current table data.
+            unset($definition['items']);
+        }
+
         return [
             'type' => ($column['source'] ?? null) === 'social_links' ? 'social_links' : 'links',
             'source' => $column['source'] ?? 'manual',
             'title' => $column['title'] ?? 'Links',
-            'items' => $sourceResolver->resolveItems($column, $context),
+            'items' => $sourceResolver->resolveItems($definition, $context),
         ];
     }
 

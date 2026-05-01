@@ -91,32 +91,10 @@ class HomePageSeeder extends Seeder
             'type' => SectionType::CATEGORY_CARDS->value,
             'title' => 'Treatment Category Cards',
             'subtitle' => 'Primary categories grid',
-            'content' => [
-                'variant' => 'soft_cards',
-                'cta_label' => 'View Products',
-            ],
+            'content' => [],
             'sort_order' => 5,
         ]);
-        $this->syncItems($categoryCards, [
-            [
-                'title' => 'Weight Loss',
-                'description' => 'Prescription weight loss solutions customized to your goals. Evidence-based treatments delivered to your door.',
-                'icon' => 'activity',
-                'sort_order' => 1,
-            ],
-            [
-                'title' => 'Wellness',
-                'description' => 'Support for body and mind wellness. Personalized treatments for optimal health and vitality.',
-                'icon' => 'sparkles',
-                'sort_order' => 2,
-            ],
-            [
-                'title' => 'Longevity',
-                'description' => 'Cellular health and longevity solutions. Science-backed treatments for healthy aging.',
-                'icon' => 'shield-heart',
-                'sort_order' => 3,
-            ],
-        ]);
+        $this->clearItems($categoryCards);
 
         $howHeader = $this->upsertSection($page, [
             'section_key' => 'how_it_works_header',

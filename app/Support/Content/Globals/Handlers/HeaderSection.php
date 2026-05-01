@@ -37,14 +37,19 @@ class HeaderSection
         $type = $item['type'] ?? (isset($item['source']) || isset($item['items']) ? 'group' : 'link');
 
         if ($type === 'group') {
+            $source = $item['source'] ?? (isset($item['items']) ? 'manual' : null);
+            $definition = isset($item['source']) ? $item : ($item + ['source' => 'manual']);
+
+            if ($source === 'categories') {
+                // Header category menus should always reflect the current table data.
+                unset($definition['items']);
+            }
+
             return [
                 'type' => 'group',
                 'label' => $item['label'] ?? $item['title'] ?? null,
-                'source' => $item['source'] ?? (isset($item['items']) ? 'manual' : null),
-                'items' => $sourceResolver->resolveItems(
-                    isset($item['source']) ? $item : ($item + ['source' => 'manual']),
-                    $context
-                ),
+                'source' => $source,
+                'items' => $sourceResolver->resolveItems($definition, $context),
             ];
         }
 
