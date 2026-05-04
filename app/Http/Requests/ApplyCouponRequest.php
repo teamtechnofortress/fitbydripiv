@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateCheckoutRequest extends FormRequest
+class ApplyCouponRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,6 +15,7 @@ class CreateCheckoutRequest extends FormRequest
     {
         return [
             'order_uuid' => ['required', 'uuid', 'exists:orders,order_uuid'],
+            'coupon_code' => ['required', 'string', 'max:100'],
         ];
     }
 }

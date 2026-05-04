@@ -26,6 +26,7 @@ use App\Http\Controllers\CmsUploadController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ProductStepController;
 use App\Http\Controllers\AdminMediaController;
+use App\Http\Controllers\AdminCouponController;
 use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ContentAdminController;
@@ -94,6 +95,7 @@ Route::prefix('v1')->group( function(){
 
     Route::post('checkout/draft', [CheckoutController::class, 'createDraft'])->name('checkout.draft');
     Route::post('checkout', [CheckoutController::class, 'create'])->name('checkout.create');
+    Route::post('checkout/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('checkout.apply-coupon');
     Route::get('orders/by-session/{session_id}', [CheckoutController::class, 'showBySession'])->name('orders.by-session');
     Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
@@ -184,6 +186,7 @@ Route::prefix('v1')->group( function(){
             Route::post('products/step-5', [ProductStepController::class, 'step5'])->name('admin.products.step5');
             Route::get('products', [ProductController::class, 'index'])->name('admin.products.index');
             Route::get('products/drafts', [ProductController::class, 'drafts'])->name('admin.products.drafts');
+            Route::get('products/search-selection', [ProductController::class, 'searchSelection'])->name('admin.products.search-selection');
             Route::delete('products/{productId}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
             Route::get('products/{productId}/publish-status', [ProductController::class, 'publishStatus'])->name('admin.products.publish-status');
             Route::get('products/{productId}/preview', [ProductController::class, 'preview'])->name('admin.products.preview');
@@ -196,6 +199,12 @@ Route::prefix('v1')->group( function(){
             Route::get('products/{productId}/step-4', [ProductStepController::class, 'getStep4'])->name('admin.products.get-step4');
             Route::get('products/{productId}/step-5', [ProductStepController::class, 'getStep5'])->name('admin.products.get-step5');
             Route::get('products/{productId}/step-status', [ProductStepController::class, 'status'])->name('admin.products.step-status');
+            Route::get('coupons', [AdminCouponController::class, 'index'])->name('admin.coupons.index');
+            Route::post('coupons', [AdminCouponController::class, 'store'])->name('admin.coupons.store');
+            Route::get('coupons/{couponId}', [AdminCouponController::class, 'show'])->name('admin.coupons.show');
+            Route::put('coupons/{couponId}', [AdminCouponController::class, 'update'])->name('admin.coupons.update');
+            Route::delete('coupons/{couponId}', [AdminCouponController::class, 'destroy'])->name('admin.coupons.destroy');
+            Route::post('coupons/{couponId}/toggle-active', [AdminCouponController::class, 'toggleActive'])->name('admin.coupons.toggle-active');
             Route::post('media/upload', [AdminMediaController::class, 'upload'])->name('admin.media.upload');
             Route::get('ingredients', [IngredientController::class, 'index'])->name('admin.ingredients.index');
             Route::post('ingredients', [IngredientController::class, 'store'])->name('admin.ingredients.store');

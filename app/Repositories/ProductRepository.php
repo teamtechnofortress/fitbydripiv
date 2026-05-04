@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use Illuminate\Support\Collection;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ProductRepository
@@ -33,6 +34,29 @@ class ProductRepository
             ->whereIn('completion_status', ['draft', 'incomplete'])
             ->orderByDesc('updated_at')
             ->paginate($perPage);
+    }
+
+    public function searchForSelection(string $search, int $limit = 5): Collection
+    {
+        $search = trim($search);
+
+        return Product::query()
+            ->select([
+                'id',
+                'name',
+                'slug',
+            ])
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('slug', 'like', '%' . $search . '%');
+            })
+            ->orderByRaw('CASE WHEN name LIKE ? THEN 0 WHEN slug LIKE ? THEN 1 ELSE 2 END', [
+                $search . '%',
+                $search . '%',
+            ])
+            ->orderBy('name')
+            ->limit(max(1, min($limit, 20)))
+            ->get();
     }
 
     protected function baseQuery(array $filters = [])

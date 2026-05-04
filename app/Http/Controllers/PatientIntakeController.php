@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Patient;
 use App\Models\PatientIntake;
-use App\Services\CheckoutService;
+use App\Services\CheckoutResponseService;
 use App\Services\IdempotencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,7 +16,7 @@ class PatientIntakeController extends Controller
 {
     public function __construct(
         protected IdempotencyService $idempotencyService,
-        protected CheckoutService $checkoutService
+        protected CheckoutResponseService $checkoutResponseService
     ) {
     }
 
@@ -311,24 +311,10 @@ class PatientIntakeController extends Controller
                     return [$patient, $intake, $order->fresh()];
                 });
 
-                Log::info('Initiating checkout session for order', [
-                    'order_id' => $updatedOrder->id,
-                    'purchase_type' => $updatedOrder->purchase_type,
-                ]);
-
-                $checkout = $this->checkoutService->createCheckoutForOrder($updatedOrder);
-
-                Log::info('Checkout session created after intake', [
-                    'order_id' => $updatedOrder->id,
-                    'checkout_id' => $checkout['checkout_id'],
-                ]);
-
-                return [
-                    'message' => 'Patient intake submitted successfully.',
-                    'patient' => $patient,
-                    'intake' => $intake,
-                    'checkout' => $checkout,
-                ];
+                return $this->checkoutResponseService->buildResponse(
+                    'Patient intake submitted successfully.',
+                    $updatedOrder
+                );
             }
         );
 

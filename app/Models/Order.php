@@ -34,12 +34,26 @@ class Order extends Model
         'purchase_type',
         'pricing_type',
         'pricing_option_id',
+        'coupon_id',
+        'coupon_code',
+        'base_amount',
+        'coupon_discount_amount',
+        'final_amount',
         'frequency_months',
         'status',
         'payment_status',
         'stripe_checkout_id',
         'stripe_payment_intent_id',
         'stripe_invoice_id',
+    ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'base_amount' => 'decimal:2',
+        'coupon_discount_amount' => 'decimal:2',
+        'final_amount' => 'decimal:2',
+        'billing_cycle_number' => 'integer',
+        'frequency_months' => 'integer',
     ];
 
     protected static function booted(): void
@@ -74,6 +88,11 @@ class Order extends Model
     public function pricingOption(): BelongsTo
     {
         return $this->belongsTo(PricingOption::class, 'pricing_option_id');
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class, 'coupon_id');
     }
 
     public function webhooks(): MorphMany

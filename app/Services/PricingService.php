@@ -52,6 +52,11 @@ class PricingService
         return round((float) $option->final_price, 2);
     }
 
+    public function resolveBasePrice(PricingOption $option): float
+    {
+        return round((float) ($option->price ?? $option->final_price), 2);
+    }
+
     public function resolveFrequencyMonths(PricingOption $option): ?int
     {
         return match ($option->billing_interval) {

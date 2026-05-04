@@ -68,7 +68,7 @@ class CategoryTemplateSeeder extends Seeder
                 'description' => 'Have questions? Our medical team is here to help you find the right solution',
                 'button' => [
                     'label' => 'Start my journey',
-                    'link' => '/telehealth',
+                    'link' => '/productselection',
                     'style' => 'primary',
                 ],
                 'layout' => 'centered_cta',

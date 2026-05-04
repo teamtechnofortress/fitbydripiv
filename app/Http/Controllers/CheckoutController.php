@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ApplyCouponRequest;
 use App\Http\Requests\CreateCheckoutRequest;
 use App\Http\Requests\CreateOrderDraftRequest;
 use App\Models\Order;
+use App\Services\CheckoutResponseService;
 use App\Services\CheckoutService;
+use App\Services\CouponService;
 use App\Services\IdempotencyService;
 use Illuminate\Http\JsonResponse;
 
@@ -13,6 +16,8 @@ class CheckoutController extends Controller
 {
     public function __construct(
         protected CheckoutService $checkoutService,
+        protected CheckoutResponseService $checkoutResponseService,
+        protected CouponService $couponService,
         protected IdempotencyService $idempotencyService
     ) {
     }
@@ -36,6 +41,21 @@ class CheckoutController extends Controller
         );
 
         return response()->json($result, 201);
+    }
+
+    public function applyCoupon(ApplyCouponRequest $request): JsonResponse
+    {
+        $order = $this->couponService->applyCouponToOrder(
+            $request->validated()['order_uuid'],
+            $request->validated()['coupon_code']
+        );
+
+        return response()->json(
+            $this->checkoutResponseService->buildResponse(
+                'Coupon applied successfully.',
+                $order
+            )
+        );
     }
 
     public function showBySession(string $sessionId): JsonResponse

@@ -129,19 +129,27 @@ class StripeWebhookService
         if ($order->purchase_type === 'subscription' && ! $order->subscription_id) {
 
             $stripeSubscriptionId = $session->subscription ?? null;
-            $frequency            = $this->resolveFrequencyMonths($order);
-            $totalCycles          = $this->resolveTotalCycles($order);
+            $metadata             = $this->normalizeMetadata($session->metadata ?? null);
+            $frequency            = $this->metadataInt($metadata, 'frequency_months') ?? $this->resolveFrequencyMonths($order);
+            $totalCycles          = $this->metadataInt($metadata, 'total_cycles') ?? $this->resolveTotalCycles($order);
 
             $subscription = Subscription::create([
                 'order_id'                => $order->id,
                 'patient_id'              => $order->patient_id,
                 'product_id'              => $order->product_id,
+                'pricing_option_id'       => $this->metadataString($metadata, 'pricing_option_id') ?? $order->pricing_option_id,
+                'coupon_id'               => null,
+                'coupon_code'             => null,
                 'current_cycle_number'    => 1,
                 'total_cycles'            => $totalCycles,
                 'stripe_subscription_id'  => $stripeSubscriptionId,
                 'stripe_customer_id'      => $session->customer ?? null,
                 'billing_frequency_months' => $frequency,
-                'discount_percentage'     => $this->resolveDiscountPercentage($order),
+                'discount_percentage'     => $this->metadataDecimal($metadata, 'discount_percentage') ?? $this->resolveDiscountPercentage($order),
+                'base_recurring_amount'   => $this->metadataDecimal($metadata, 'base_recurring_amount'),
+                'discounted_recurring_amount' => $this->metadataDecimal($metadata, 'discounted_recurring_amount') ?? round((float) $order->price, 2),
+                'discount_duration_type'  => $this->metadataString($metadata, 'discount_duration_type'),
+                'discount_remaining_cycles' => $this->metadataInt($metadata, 'discount_remaining_cycles'),
                 'start_date'              => today(),
                 'next_billing_date'       => now()->addMonths($frequency)->toDateString(),
                 'end_date'                => null,
@@ -275,17 +283,22 @@ class StripeWebhookService
         // Create the renewal order
         // -----------------------------------------------------------------------
         $nextCycle = $subscription->current_cycle_number + 1;
+        $baseAmount = round((float) ($subscription->base_recurring_amount ?? $subscription->discounted_recurring_amount ?? 0), 2);
+        $finalAmount = round(((float) ($invoice->amount_paid ?? 0)) / 100, 2);
 
         $order = Order::create([
             'patient_id'               => $subscription->patient_id,
             'product_id'               => $subscription->product_id,
-            'price'                    => round(((float) ($invoice->amount_paid ?? 0)) / 100, 2),
+            'price'                    => $finalAmount,
             'currency'                 => strtoupper($invoice->currency ?? 'USD'),
             'subscription_id'          => $subscription->id,
             'billing_cycle_number'     => $nextCycle,
             'purchase_type'            => 'subscription',
             'pricing_type'             => $subscription->order?->pricing_type ?? 'subscription',
-            'pricing_option_id'        => $subscription->order?->pricing_option_id,
+            'pricing_option_id'        => $subscription->pricing_option_id ?? $subscription->order?->pricing_option_id,
+            'base_amount'              => $baseAmount,
+            'coupon_discount_amount'   => 0,
+            'final_amount'             => $finalAmount,
             'status'                   => 'completed',
             'payment_status'           => 'paid',
             'stripe_checkout_id'       => null,
@@ -628,5 +641,52 @@ class StripeWebhookService
             ->first();
 
         return round((float) ($option?->discount_percent ?? 0), 2);
+    }
+    protected function normalizeMetadata(mixed $metadata): array
+    {
+        if (is_array($metadata)) {
+            return $metadata;
+        }
+
+        if (is_object($metadata)) {
+            return get_object_vars($metadata);
+        }
+
+        return [];
+    }
+
+    protected function metadataString(array $metadata, string $key): ?string
+    {
+        $value = $metadata[$key] ?? null;
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    protected function metadataInt(array $metadata, string $key): ?int
+    {
+        $value = $this->metadataString($metadata, $key);
+
+        if ($value === null || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    protected function metadataDecimal(array $metadata, string $key): ?float
+    {
+        $value = $this->metadataString($metadata, $key);
+
+        if ($value === null || ! is_numeric($value)) {
+            return null;
+        }
+
+        return round((float) $value, 2);
     }
 }

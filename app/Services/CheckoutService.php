@@ -29,16 +29,20 @@ class CheckoutService
 
         [$product, $pricing, $pricingOption] = $this->resolveCheckoutSelection($data);
         $purchaseType = $pricing->pricing_type;
+        $basePrice = $this->pricingService->resolveBasePrice($pricingOption);
         $finalPrice = $this->pricingService->resolvePrice($pricingOption);
         $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
             ? $this->pricingService->resolveFrequencyMonths($pricingOption)
             : null;
 
-        $order = DB::transaction(function () use ($data, $product, $purchaseType, $pricingOption, $finalPrice, $frequencyMonths) {
+        $order = DB::transaction(function () use ($data, $product, $purchaseType, $pricingOption, $basePrice, $finalPrice, $frequencyMonths) {
             return Order::create([
                 'patient_id' => $data['patient_id'] ?? null,
                 'product_id' => $product->id,
                 'price' => $finalPrice,
+                'base_amount' => $basePrice,
+                'coupon_discount_amount' => 0,
+                'final_amount' => $finalPrice,
                 'currency' => $this->pricingService->resolveCurrency($product),
                 'subscription_id' => null,
                 'billing_cycle_number' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 1 : null,
@@ -63,43 +67,28 @@ class CheckoutService
 
     public function createCheckout(array $data): array
     {
-        Log::info('Direct checkout creation requested', [
-            'product_slug' => $data['product_slug'] ?? null,
-            'pricing_type' => $data['pricing_type'] ?? null,
-            'pricing_option_id' => $data['pricing_option_id'] ?? null,
-            'patient_id' => $data['patient_id'] ?? null,
+        Log::info('Checkout session creation requested for existing draft order', [
+            'order_uuid' => $data['order_uuid'] ?? null,
         ]);
 
-        [$product, $pricing, $pricingOption] = $this->resolveCheckoutSelection($data);
-        $purchaseType = $pricing->pricing_type;
-        $finalPrice = $this->pricingService->resolvePrice($pricingOption);
-        $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
-            ? $this->pricingService->resolveFrequencyMonths($pricingOption)
-            : null;
+        $order = Order::query()
+            ->where('order_uuid', $data['order_uuid'])
+            ->first();
 
-        $order = DB::transaction(function () use ($data, $product, $purchaseType, $pricingOption, $finalPrice, $frequencyMonths) {
-            return Order::create([
-                'patient_id' => $data['patient_id'],
-                'product_id' => $product->id,
-                'price' => $finalPrice,
-                'currency' => $this->pricingService->resolveCurrency($product),
-                'subscription_id' => null,
-                'billing_cycle_number' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 1 : null,
-                'purchase_type' => $purchaseType,
-                'pricing_type' => $purchaseType,
-                'pricing_option_id' => $pricingOption->id,
-                'frequency_months' => $frequencyMonths,
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
-            ]);
-        });
+        if (! $order) {
+            abort(404, 'Checkout draft not found.');
+        }
 
-        Log::info('Order created for direct checkout', [
+        if (! $order->patient_id) {
+            abort(422, 'Order is not linked to a patient intake yet.');
+        }
+
+        Log::info('Checkout session will be created for existing order', [
             'order_id' => $order->id,
             'order_uuid' => $order->order_uuid,
         ]);
 
-        return $this->createCheckoutForOrder($order, $product);
+        return $this->createCheckoutForOrder($order);
     }
 
     public function createCheckoutForOrder(Order $order, ?Product $product = null): array
@@ -119,23 +108,37 @@ class CheckoutService
         }
 
         $purchaseType = $order->purchase_type;
-        $finalPrice = $this->pricingService->resolvePrice($pricingOption);
+        $basePrice = $this->pricingService->resolveBasePrice($pricingOption);
+        $pricingOptionFinalPrice = $this->pricingService->resolvePrice($pricingOption);
         $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
             ? $this->pricingService->resolveFrequencyMonths($pricingOption)
             : null;
         $recurring = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
             ? $this->pricingService->resolveRecurringConfig($pricingOption)
             : null;
+        $couponDiscountAmount = round((float) ($order->coupon_discount_amount ?? 0), 2);
+        $finalPrice = max(0, round($pricingOptionFinalPrice - $couponDiscountAmount, 2));
 
         if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION && ! $recurring) {
             abort(422, 'Selected subscription option is not configured for recurring checkout.');
         }
 
-        if ((float) $order->price !== (float) $finalPrice || $order->frequency_months !== $frequencyMonths) {
+        if (
+            (float) $order->price !== (float) $finalPrice
+            || (float) $order->base_amount !== (float) $basePrice
+            || (float) $order->final_amount !== (float) $finalPrice
+            || $order->frequency_months !== $frequencyMonths
+        ) {
+            $order->base_amount = $basePrice;
+            $order->final_amount = $finalPrice;
             $order->price = $finalPrice;
             $order->frequency_months = $frequencyMonths;
             $order->save();
         }
+
+        $subscriptionMetadata = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
+            ? $this->buildSubscriptionMetadata($order, $product, $pricingOption, $finalPrice, $frequencyMonths)
+            : [];
 
         $params = [
             'mode' => $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION ? 'subscription' : 'payment',
@@ -152,6 +155,10 @@ class CheckoutService
                 'frequency_months' => $frequencyMonths,
             ],
         ];
+
+        if ($subscriptionMetadata !== []) {
+            $params['metadata'] = array_merge($params['metadata'], $subscriptionMetadata);
+        }
 
         $lineItem = [
             'price_data' => [
@@ -173,14 +180,14 @@ class CheckoutService
 
         if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION) {
             $params['subscription_data'] = [
-                'metadata' => [
+                'metadata' => array_merge([
                     'order_id' => (string) $order->id,
                     'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) ($order->patient_id ?? ''),
                     'product_id' => (string) $product->id,
                     'pricing_option_id' => (string) $pricingOption->id,
                     'frequency_months' => $frequencyMonths,
-                ],
+                ], $subscriptionMetadata),
             ];
         } else {
             $params['payment_intent_data'] = [
@@ -268,6 +275,8 @@ class CheckoutService
             'purchase_type' => $order->purchase_type,
             'pricing_type' => $order->pricing_type,
             'price' => $order->price,
+            'base_amount' => $order->base_amount,
+            'final_amount' => $order->final_amount,
             'currency' => $order->currency,
             'product' => [
                 'id' => $product->id,
@@ -300,6 +309,35 @@ class CheckoutService
                 ],
                 'frequency_months' => $frequencyMonths,
             ],
+        ];
+    }
+
+    protected function buildSubscriptionMetadata(
+        Order $order,
+        Product $product,
+        PricingOption $pricingOption,
+        float $finalPrice,
+        ?int $frequencyMonths
+    ): array {
+        $pricingMetadata = is_array($pricingOption->metadata) ? $pricingOption->metadata : [];
+        $discountPercentage = round((float) ($pricingOption->discount_percent ?? 0), 2);
+        $baseRecurringAmount = round((float) ($pricingOption->price ?? $finalPrice), 2);
+        $discountedRecurringAmount = round($finalPrice, 2);
+        $discountDurationType = $pricingMetadata['discount_duration_type']
+            ?? ($discountPercentage > 0 ? 'forever' : '');
+        $discountRemainingCycles = $pricingMetadata['discount_remaining_cycles'] ?? '';
+        $totalCycles = $pricingMetadata['total_cycles'] ?? '';
+
+        return [
+            'pricing_option_id' => (string) $pricingOption->id,
+            'product_id' => (string) $product->id,
+            'frequency_months' => $frequencyMonths === null ? '' : (string) $frequencyMonths,
+            'total_cycles' => $totalCycles === '' ? '' : (string) max(1, (int) $totalCycles),
+            'base_recurring_amount' => number_format($baseRecurringAmount, 2, '.', ''),
+            'discounted_recurring_amount' => number_format($discountedRecurringAmount, 2, '.', ''),
+            'discount_percentage' => number_format($discountPercentage, 2, '.', ''),
+            'discount_duration_type' => (string) $discountDurationType,
+            'discount_remaining_cycles' => $discountRemainingCycles === '' ? '' : (string) max(0, (int) $discountRemainingCycles),
         ];
     }
 }

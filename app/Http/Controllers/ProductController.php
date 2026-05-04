@@ -67,6 +67,28 @@ class ProductController extends Controller
         return response()->json($payload);
     }
 
+    public function searchSelection(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => 'required|string|max:255',
+            'limit' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        $products = $this->productRepository->searchForSelection(
+            $validated['search'],
+            $validated['limit'] ?? 5
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $products->map(fn ($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+            ])->values()->all(),
+        ]);
+    }
+
     protected function buildProductListPayload($products): array
     {
         return [
