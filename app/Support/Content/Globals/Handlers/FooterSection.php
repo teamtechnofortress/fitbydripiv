@@ -44,13 +44,13 @@ class FooterSection
     {
         $brand = $sourceResolver->resolveBrand($column);
 
-        return [
+        return array_merge(static::columnMetadata($column), [
             'type' => 'brand',
             'title' => $column['title'] ?? $brand['name'],
             'logo' => $brand['logo'],
             'content' => $brand['description'],
             'home_url' => $brand['home_url'],
-        ];
+        ]);
     }
 
     protected static function linksColumn(array $column, GlobalSourceResolver $sourceResolver, array $context = []): array
@@ -62,12 +62,12 @@ class FooterSection
             unset($definition['items']);
         }
 
-        return [
+        return array_merge(static::columnMetadata($column), [
             'type' => ($column['source'] ?? null) === 'social_links' ? 'social_links' : 'links',
             'source' => $column['source'] ?? 'manual',
             'title' => $column['title'] ?? 'Links',
             'items' => $sourceResolver->resolveItems($definition, $context),
-        ];
+        ]);
     }
 
     protected static function certificationColumn(array $column): array
@@ -75,7 +75,7 @@ class FooterSection
         $item = collect($column['items'] ?? [])
             ->first(fn ($item) => is_array($item)) ?? [];
 
-        return [
+        return array_merge(static::columnMetadata($column), [
             'type' => 'certification',
             'source' => 'certification',
             'title' => $column['title'] ?? 'Certification',
@@ -83,16 +83,25 @@ class FooterSection
                 'image' => $item['image'] ?? null,
                 'description' => $item['description'] ?? null,
             ]],
-        ];
+        ]);
     }
 
     protected static function manualColumn(array $column): array
     {
-        return [
+        return array_merge(static::columnMetadata($column), [
             'type' => $column['type'] ?? 'links',
             'title' => $column['title'] ?? null,
             'items' => array_values($column['items'] ?? []),
             'content' => $column['content'] ?? null,
+        ]);
+    }
+
+    protected static function columnMetadata(array $column): array
+    {
+        return [
+            'id' => $column['id'] ?? null,
+            'sort_order' => isset($column['sort_order']) ? (int) $column['sort_order'] : 0,
+            'start_new_row' => (bool) ($column['start_new_row'] ?? false),
         ];
     }
 }
