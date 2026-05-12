@@ -43,6 +43,7 @@ class HeaderSection
             if ($source === 'categories') {
                 // Header category menus should always reflect the current table data.
                 unset($definition['items']);
+                $definition['order_by'] = 'display_order';
             }
 
             return [

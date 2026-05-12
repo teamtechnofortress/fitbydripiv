@@ -8,6 +8,7 @@ use App\Models\CmsContactSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CmsAdminController extends Controller
 {
@@ -19,6 +20,8 @@ class CmsAdminController extends Controller
 
     public function saveCategory(Request $request): JsonResponse
     {
+        $categoryId = $request->input('id');
+
         $validated = $request->validate([
             'id' => 'sometimes|uuid',
             'name' => 'required|string|max:255',
@@ -28,7 +31,13 @@ class CmsAdminController extends Controller
             'landscape_banner' => 'nullable|string',
             'background_video' => 'nullable|string',
             'video_playback_speed' => 'nullable|numeric|min:0.5|max:3.0',
-            'display_order' => 'nullable|integer',
+            'display_order' => [
+                'nullable',
+                'integer',
+                Rule::unique('cms_categories', 'display_order')->ignore($categoryId),
+            ],
+        ], [
+            'display_order.unique' => 'Sort order must be unique. This value is already in use.',
         ]);
 
         if (empty($validated['slug'])) {

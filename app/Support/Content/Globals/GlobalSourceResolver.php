@@ -59,10 +59,27 @@ class GlobalSourceResolver
     protected function categoryItems(array $definition): array
     {
         $requestedSlugs = array_values($definition['items'] ?? []);
+        $orderByDisplayOrder = ($definition['order_by'] ?? null) === 'display_order';
 
         if ($requestedSlugs !== []) {
-            $categories = CmsCategory::query()
-                ->whereIn('slug', $requestedSlugs)
+            $categoriesQuery = CmsCategory::query()
+                ->whereIn('slug', $requestedSlugs);
+
+            if ($orderByDisplayOrder) {
+                return $categoriesQuery
+                    ->orderBy('display_order')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'slug'])
+                    ->map(fn (CmsCategory $category) => [
+                        'label' => $category->name,
+                        'slug' => $category->slug,
+                        'href' => '/' . ltrim($category->slug, '/'),
+                    ])
+                    ->values()
+                    ->all();
+            }
+
+            $categories = $categoriesQuery
                 ->get(['id', 'name', 'slug'])
                 ->keyBy('slug');
 
@@ -87,6 +104,7 @@ class GlobalSourceResolver
 
         return CmsCategory::query()
             ->orderBy('display_order')
+            ->orderBy('name')
             ->get(['id', 'name', 'slug'])
             ->map(fn (CmsCategory $category) => [
                 'label' => $category->name,
