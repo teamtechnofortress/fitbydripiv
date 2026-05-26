@@ -75,6 +75,8 @@ Route::prefix('v1')->group( function(){
         ->middleware('throttle:5,1')
         ->name('auth.reset-password');
     Route::post('auth/verify-2fa', [TwoFactorController::class, 'verify'])->name('auth.verify-2fa');
+    Route::get('public/media/pdf-download', [AdminMediaController::class, 'downloadPublicPdf'])
+        ->name('public.media.pdf-download');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('auth/2fa-status', [TwoFactorController::class, 'status'])->name('auth.2fa-status');

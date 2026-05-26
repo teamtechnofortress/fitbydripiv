@@ -124,4 +124,97 @@ class AdminMediaController extends Controller
             throw $exception;
         }
     }
+
+    public function downloadPublicPdf(Request $request)
+    {
+        $validated = $request->validate([
+            'path' => 'required|string|max:2048',
+            'name' => 'nullable|string|max:255',
+        ]);
+
+        $path = $this->normalizePublicDocumentPath($validated['path']);
+
+        if (! filled($path)) {
+            throw ValidationException::withMessages([
+                'path' => 'Invalid document path.',
+            ]);
+        }
+
+        if (! Str::startsWith($path, 'admin/documents/')) {
+            throw ValidationException::withMessages([
+                'path' => 'Only admin document PDFs can be downloaded from this endpoint.',
+            ]);
+        }
+
+        if (! Str::endsWith(Str::lower($path), '.pdf')) {
+            throw ValidationException::withMessages([
+                'path' => 'Only PDF files are allowed.',
+            ]);
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'PDF file not found.',
+            ], 404);
+        }
+
+        $downloadName = $this->resolveDownloadFileName($validated['name'] ?? null, $path);
+
+        return Storage::disk('public')->download($path, $downloadName, ['Content-Type' => 'application/pdf']);
+    }
+
+    private function normalizePublicDocumentPath(string $path): ?string
+    {
+        $normalizedPath = trim(rawurldecode($path));
+
+        if ($normalizedPath === '') {
+            return null;
+        }
+
+        if (Str::startsWith($normalizedPath, ['http://', 'https://'])) {
+            $parsedPath = parse_url($normalizedPath, PHP_URL_PATH);
+            $normalizedPath = is_string($parsedPath) ? $parsedPath : '';
+        }
+
+        $normalizedPath = str_replace('\\', '/', ltrim($normalizedPath, '/'));
+
+        if (Str::startsWith($normalizedPath, 'storage/')) {
+            $normalizedPath = Str::after($normalizedPath, 'storage/');
+        }
+
+        while (str_contains($normalizedPath, '//')) {
+            $normalizedPath = str_replace('//', '/', $normalizedPath);
+        }
+
+        if ($normalizedPath === '' || str_contains($normalizedPath, '..') || str_contains($normalizedPath, "\0")) {
+            return null;
+        }
+
+        return $normalizedPath;
+    }
+
+    private function resolveDownloadFileName(?string $requestedName, string $path): string
+    {
+        $fallbackName = basename($path);
+        $name = trim((string) $requestedName);
+
+        if ($name === '') {
+            return $fallbackName;
+        }
+
+        $name = str_replace(["\0", '/', '\\'], '', $name);
+        $name = preg_replace('/\s+/', ' ', $name) ?? '';
+        $name = trim($name);
+
+        if ($name === '' || $name === '.' || $name === '..') {
+            return $fallbackName;
+        }
+
+        if (! Str::endsWith(Str::lower($name), '.pdf')) {
+            $name .= '.pdf';
+        }
+
+        return $name;
+    }
 }
