@@ -9,6 +9,7 @@ use App\Support\Content\Sections\Handlers\ContentBlockSection;
 use App\Support\Content\Sections\Handlers\FaqSection;
 use App\Support\Content\Sections\Handlers\FeaturedProductsSection;
 use App\Support\Content\Sections\Handlers\HeroSection;
+use App\Support\Content\Sections\Handlers\PdfLibrarySection;
 use App\Support\Content\Sections\Handlers\ProcessSection;
 use App\Support\Content\Sections\Handlers\ProductGridSection;
 use App\Support\Content\Sections\Handlers\ProductDetailsSection;
@@ -42,6 +43,8 @@ class SectionResolver
             SectionType::CATEGORY_CARDS => CategoryCardsSection::handle($section),
             SectionType::PROCESS => ProcessSection::handle($section),
             SectionType::TELEHEALTH_CTA => TelehealthCtaSection::handle($section),
+            SectionType::PEN_INSTRUCTION_LIBRARY,
+            SectionType::PDF_LIBRARY => PdfLibrarySection::handle($section),
             default => static::default($section),
         };
     }

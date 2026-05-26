@@ -400,12 +400,14 @@ Route::prefix('v1')->group( function(){
     Route::prefix('content')->group(function () {
         Route::get('settings', [ContentPublicController::class, 'getSettings']);
         Route::get('pages', [ContentPublicController::class, 'getPages']);
-        Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug']);
+        Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug'])
+            ->where('slug', '.+');
     });
 
     Route::get('layout', [LayoutController::class, 'show']);
     Route::get('products/{slug}/pricing', [CmsPublicController::class, 'getProductPricing']);
     Route::get('pages', [ContentPublicController::class, 'getPages']);
-    Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug']);
+    Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug'])
+        ->where('slug', '.+');
 
 });

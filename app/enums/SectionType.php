@@ -23,4 +23,6 @@ enum SectionType: string
     case PRODUCT_SPECIFIC_QUESTIONS = 'product_specific_questions';
     case GENERAL_FAQS = 'general_faqs';
     case PROCEEDING_BUTTONS = 'proceeding_buttons';
+    case PEN_INSTRUCTION_LIBRARY = 'pen_instruction_library';
+    case PDF_LIBRARY = 'pdf_library';
 }

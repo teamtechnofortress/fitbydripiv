@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             CategoryTemplateSeeder::class,
             GeneralFaqPageSeeder::class,
             InstructionsPageSeeder::class,
+            PenInstructionsPageSeeder::class,
             PrivacyPageSeeder::class,
             ProductSelectionPageSeeder::class,
             TelehealthFaqPageSeeder::class,

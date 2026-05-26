@@ -47,9 +47,15 @@ class AdminMediaController extends Controller
                     || in_array($detectedMimeType, ['application/mp4', 'application/octet-stream'], true)
                 );
 
-            if (! $isAllowedImage && ! $isAllowedVideo) {
+            $isAllowedPdf = $extension === 'pdf'
+                && (
+                    in_array($detectedMimeType, ['application/pdf', 'application/octet-stream', ''], true)
+                    || in_array($clientMimeType, ['application/pdf', 'application/octet-stream', ''], true)
+                );
+
+            if (! $isAllowedImage && ! $isAllowedVideo && ! $isAllowedPdf) {
                 throw ValidationException::withMessages([
-                    'file' => 'The file must be a valid jpg, jpeg, png, webp, mp4, webm, or mov upload.',
+                    'file' => 'The file must be a valid jpg, jpeg, png, webp, mp4, webm, mov, or pdf upload.',
                 ]);
             }
 
@@ -64,9 +70,11 @@ class AdminMediaController extends Controller
 
             $mimeType = $detectedMimeType !== '' ? $detectedMimeType : $clientMimeType;
             $isVideo = $isAllowedVideo;
+            $isPdf = $isAllowedPdf;
 
             $folder = match (true) {
                 $isVideo => 'admin/videos',
+                $isPdf => 'admin/documents',
                 ($validated['type'] ?? null) === 'product' => 'admin/products',
                 ($validated['type'] ?? null) === 'user' => 'admin/users',
                 default => 'admin/misc',
@@ -78,7 +86,7 @@ class AdminMediaController extends Controller
                 'folder' => $folder,
                 'filename' => $filename,
                 'disk' => 'public',
-                'media_type' => $isVideo ? 'video' : 'image',
+                'media_type' => $isVideo ? 'video' : ($isPdf ? 'pdf' : 'image'),
                 'mime_type' => $mimeType,
             ]);
 
@@ -90,7 +98,7 @@ class AdminMediaController extends Controller
                     'url' => Storage::disk('public')->url($path),
                     'path' => $path,
                     'type' => $validated['type'] ?? 'misc',
-                    'media_type' => $isVideo ? 'video' : 'image',
+                    'media_type' => $isVideo ? 'video' : ($isPdf ? 'pdf' : 'image'),
                     'mime_type' => $mimeType,
                     'extension' => $extension,
                     'size' => $file->getSize(),
