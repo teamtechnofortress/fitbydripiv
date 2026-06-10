@@ -2,7 +2,7 @@
 
 namespace App\Support\Content\Sections;
 
-use App\Enums\ProductImageType;
+use App\enums\ProductImageType;
 use App\enums\SectionType;
 use App\Models\Product;
 use App\Models\ProductImage;

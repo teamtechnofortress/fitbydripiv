@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\ProductImageType;
+use App\enums\ProductImageType;
 use App\Http\Requests\StoreProductStep2Request;
 use App\Http\Requests\StoreProductStep3Request;
 use App\Http\Requests\StoreProductStep4Request;

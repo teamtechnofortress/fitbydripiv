@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\ProductImageType;
+use App\enums\ProductImageType;
 use App\Models\PricingOption;
 use App\Models\Faq;
 use App\Models\ProductIngredientMap;
