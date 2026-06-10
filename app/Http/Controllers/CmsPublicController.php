@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\enums\SectionType;
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
 use App\Models\Product;
 use App\Models\ProductPricing;
+use App\Support\Content\Sections\ProductSectionImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -49,7 +51,13 @@ class CmsPublicController extends Controller
         if (!$product) {
             return response()->json(['success' => false, 'message' => 'Product not found'], 404);
         }
-        return response()->json(['success' => true, 'data' => $product]);
+
+        $data = $product->toArray();
+        $data['cover_image'] = ProductSectionImage::serialize(
+            ProductSectionImage::resolveForSection($product, SectionType::PRODUCT_DETAILS)
+        );
+
+        return response()->json(['success' => true, 'data' => $data]);
     }
 
     public function getProductPricing(string $slug): JsonResponse
@@ -141,4 +149,5 @@ class CmsPublicController extends Controller
             'options' => $options->all(),
         ];
     }
+
 }

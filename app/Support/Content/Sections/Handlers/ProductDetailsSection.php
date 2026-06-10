@@ -4,6 +4,7 @@ namespace App\Support\Content\Sections\Handlers;
 
 use App\Models\PageSection;
 use App\Models\Product;
+use App\Support\Content\Sections\ProductSectionImage;
 
 class ProductDetailsSection
 {
@@ -14,6 +15,8 @@ class ProductDetailsSection
         if (! $product instanceof Product) {
             return null;
         }
+
+        $sectionImage = ProductSectionImage::resolveForSection($product, $section->type ?? $section->getRawOriginal('type'));
 
         return [
             'id' => $section->id,
@@ -37,17 +40,10 @@ class ProductDetailsSection
                     'treatment_duration' => $product->treatment_duration,
                     'usage_instructions' => $product->usage_instructions,
                     'clinical_research_description' => $product->clinical_research_description,
-                    'cover_image' => $product->coverImage ? [
-                        'id' => $product->coverImage->id,
-                        'image_url' => $product->coverImage->image_url,
-                        'image_type' => $product->coverImage->image_type,
-                    ] : null,
-                    'images' => $product->images->map(fn ($image) => [
-                        'id' => $image->id,
-                        'image_url' => $image->image_url,
-                        'image_type' => $image->image_type,
-                        'sort_order' => $image->sort_order,
-                    ])->values()->all(),
+                    'cover_image' => ProductSectionImage::serialize($sectionImage),
+                    'images' => $product->images->map(
+                        fn ($image) => ProductSectionImage::serialize($image)
+                    )->values()->all(),
                     'benefits' => $product->benefits->map(fn ($benefit) => [
                         'id' => $benefit->id,
                         'benefit_text' => $benefit->benefit_text,

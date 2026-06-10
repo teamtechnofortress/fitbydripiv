@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\ProductImageType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,9 +29,8 @@ class StoreProductStep1Request extends FormRequest
             'cover_image_id' => 'nullable|uuid|exists:product_images,id',
             'images' => 'nullable|array',
             'images.*.image_url' => 'required|string|max:500',
-            'images.*.image_type' => 'required|in:cover,gallery',
+            'images.*.image_type' => ['required', Rule::in(ProductImageType::values())],
             'images.*.sort_order' => 'nullable|integer',
-            'images.*.slot_position' => 'nullable|integer',
         ];
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProductImageType;
 use App\Http\Requests\StoreProductStep2Request;
 use App\Http\Requests\StoreProductStep3Request;
 use App\Http\Requests\StoreProductStep4Request;
 use App\Http\Requests\StoreProductStep5Request;
 use App\Http\Requests\StoreProductStep1Request;
+use App\Models\Product;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 
@@ -29,6 +31,7 @@ class ProductStepController extends Controller
                 'slug' => $product->slug,
                 'category' => $product->category,
                 'description' => $product->description,
+                'images' => $this->formatProductImages($product),
                 'completion_status' => $product->completion_status,
                 'completion_percentage' => $product->completion_percentage,
                 'completion_step' => $product->completion_step,
@@ -50,18 +53,44 @@ class ProductStepController extends Controller
                 'category' => $product->category,
                 'description' => $product->description,
                 'cover_image_id' => $product->cover_image_id,
-                'images' => $product->images->map(fn ($image) => [
-                    'id' => $image->id,
-                    'image_url' => $image->image_url,
-                    'image_type' => $image->image_type,
-                    'slot_position' => $image->slot_position,
-                    'sort_order' => $image->sort_order,
-                ])->values(),
+                'images' => $this->formatProductImages($product),
                 'completion_status' => $product->completion_status,
                 'completion_percentage' => $product->completion_percentage,
                 'completion_step' => $product->completion_step,
             ],
         ]);
+    }
+
+    public function productImageConfig(): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'image_types' => ProductImageType::frontendConfigs(),
+        ]);
+    }
+
+    private function formatProductImages(Product $product): array
+    {
+        $product->loadMissing(['coverImage', 'images']);
+
+        $imagesByType = $product->images->groupBy(function ($image) {
+            return $image->image_type instanceof ProductImageType
+                ? $image->image_type->value
+                : $image->image_type;
+        });
+
+        return [
+            'cover' => $product->coverImage,
+            'product_detail_main' => $imagesByType
+                ->get(ProductImageType::PRODUCT_DETAIL_MAIN->value, collect())
+                ->first(),
+            'featured_card' => $imagesByType
+                ->get(ProductImageType::FEATURED_CARD->value, collect())
+                ->first(),
+            'product_select_card' => $imagesByType
+                ->get(ProductImageType::PRODUCT_SELECT_CARD->value, collect())
+                ->first(),
+        ];
     }
 
     public function step2(StoreProductStep2Request $request): JsonResponse

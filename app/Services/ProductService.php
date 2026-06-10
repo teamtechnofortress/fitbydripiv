@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ProductImageType;
 use App\Models\PricingOption;
 use App\Models\Faq;
 use App\Models\ProductIngredientMap;
@@ -64,18 +65,7 @@ class ProductService
             $product->save();
 
             if (array_key_exists('images', $data)) {
-                $coverImageId = $this->replaceProductImages($product, $data['images'] ?? []);
-
-                if ($coverImageId !== null) {
-                    $product->cover_image_id = $coverImageId;
-                    $product->save();
-                } elseif (! empty($data['cover_image_id'])) {
-                    $product->cover_image_id = $this->resolveCoverImageId($product, $data['cover_image_id']);
-                    $product->save();
-                } elseif (empty($data['images'])) {
-                    $product->cover_image_id = null;
-                    $product->save();
-                }
+                $this->replaceProductImages($product, $data['images'] ?? []);
             } elseif (! empty($data['cover_image_id'])) {
                 $product->cover_image_id = $this->resolveCoverImageId($product, $data['cover_image_id']);
                 $product->save();
@@ -271,13 +261,10 @@ class ProductService
         return DB::transaction(function () use ($product, $images, $coverImageId) {
             $product = $this->resolveProduct($product);
 
-            $detectedCoverImageId = $this->replaceProductImages($product, $images);
+            $this->replaceProductImages($product, $images);
 
             if ($coverImageId !== null) {
                 $product->cover_image_id = $this->resolveCoverImageId($product, $coverImageId);
-                $product->save();
-            } elseif ($detectedCoverImageId !== null) {
-                $product->cover_image_id = $detectedCoverImageId;
                 $product->save();
             }
 
@@ -379,27 +366,33 @@ class ProductService
         $product->slug = $slug;
     }
 
-    protected function replaceProductImages(Product $product, array $images): ?string
+    private function replaceProductImages(Product $product, array $images): void
     {
-        ProductImage::where('product_id', $product->id)->delete();
+        $product->update([
+            'cover_image_id' => null,
+        ]);
+
+        $product->images()->delete();
 
         $coverImageId = null;
 
-        foreach (array_values($images) as $index => $image) {
-            $createdImage = ProductImage::create([
-                'product_id' => $product->id,
-                'slot_position' => $image['slot_position'] ?? ($index + 1),
-                'image_url' => $image['image_url'],
-                'image_type' => $image['image_type'],
-                'sort_order' => $image['sort_order'] ?? $index,
+        foreach ($images as $index => $imageData) {
+            $image = $product->images()->create([
+                'image_url' => $imageData['image_url'],
+                'image_type' => $imageData['image_type'],
+                'sort_order' => $imageData['sort_order'] ?? $index + 1,
             ]);
 
-            if (($image['image_type'] ?? null) === 'cover' && $coverImageId === null) {
-                $coverImageId = $createdImage->id;
+            if (($imageData['image_type'] ?? null) === ProductImageType::COVER->value) {
+                $coverImageId = $image->id;
             }
         }
 
-        return $coverImageId;
+        if ($coverImageId) {
+            $product->update([
+                'cover_image_id' => $coverImageId,
+            ]);
+        }
     }
 
     protected function resolveCoverImageId(Product $product, string $coverImageId): string

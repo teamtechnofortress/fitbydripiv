@@ -186,6 +186,7 @@ Route::prefix('v1')->group( function(){
             Route::post('products/step-3', [ProductStepController::class, 'step3'])->name('admin.products.step3');
             Route::post('products/step-4', [ProductStepController::class, 'step4'])->name('admin.products.step4');
             Route::post('products/step-5', [ProductStepController::class, 'step5'])->name('admin.products.step5');
+            Route::get('products/image-config', [ProductStepController::class, 'productImageConfig'])->name('admin.products.image-config');
             Route::get('products', [ProductController::class, 'index'])->name('admin.products.index');
             Route::get('products/drafts', [ProductController::class, 'drafts'])->name('admin.products.drafts');
             Route::get('products/search-selection', [ProductController::class, 'searchSelection'])->name('admin.products.search-selection');
@@ -395,7 +396,7 @@ Route::prefix('v1')->group( function(){
         Route::get('products/{slug}/pricing', [CmsPublicController::class, 'getProductPricing']);
         Route::get('faqs', [CmsPublicController::class, 'getFaqs']);
         Route::get('faqs/category/{category}', [CmsPublicController::class, 'getFaqsByCategory']);
-        Route::get('site-settings', [CmsPublicController::class, 'getSiteSettings']);
+        // Route::get('site-settings', [CmsPublicController::class, 'getSiteSettings']);
         Route::post('contact', [CmsPublicController::class, 'submitContact']);
     });
 

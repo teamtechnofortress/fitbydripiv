@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ProductImageType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,15 +19,14 @@ class ProductImage extends Model
 
     protected $fillable = [
         'product_id',
-        'slot_position',
         'image_url',
         'image_type',
         'sort_order',
     ];
 
     protected $casts = [
-        'slot_position' => 'integer',
         'sort_order' => 'integer',
+        'image_type' => ProductImageType::class,
     ];
 
     public function product(): BelongsTo
@@ -36,5 +37,17 @@ class ProductImage extends Model
     public function coverForProducts(): HasMany
     {
         return $this->hasMany(Product::class, 'cover_image_id');
+    }
+
+    public function scopeOfType(Builder $query, ProductImageType|string $type): Builder
+    {
+        $type = $type instanceof ProductImageType ? $type->value : $type;
+
+        return $query->where('image_type', $type);
+    }
+
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query->orderBy('sort_order');
     }
 }

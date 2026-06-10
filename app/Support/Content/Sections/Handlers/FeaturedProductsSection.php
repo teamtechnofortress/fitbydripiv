@@ -4,6 +4,7 @@ namespace App\Support\Content\Sections\Handlers;
 
 use App\Models\PageSection;
 use App\Models\Product;
+use App\Support\Content\Sections\ProductSectionImage;
 
 class FeaturedProductsSection
 {
@@ -17,7 +18,7 @@ class FeaturedProductsSection
         }
 
         $products = Product::query()
-            ->with('coverImage')
+            ->with(['coverImage', 'images'])
             ->live()
             ->where('is_featured', true)
             ->orderByDesc('updated_at')
@@ -34,11 +35,9 @@ class FeaturedProductsSection
                 'completion_status' => $product->completion_status,
                 'completion_percentage' => $product->completion_percentage,
                 'completion_step' => $product->completion_step,
-                'cover_image' => $product->coverImage ? [
-                    'id' => $product->coverImage->id,
-                    'image_url' => $product->coverImage->image_url,
-                    'image_type' => $product->coverImage->image_type,
-                ] : null,
+                'cover_image' => ProductSectionImage::serialize(
+                    ProductSectionImage::resolveForSection($product, $section->type ?? $section->getRawOriginal('type'))
+                ),
             ])
             ->values()
             ->all();

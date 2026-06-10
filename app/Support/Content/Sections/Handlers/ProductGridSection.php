@@ -5,6 +5,7 @@ namespace App\Support\Content\Sections\Handlers;
 use App\Models\CmsCategory;
 use App\Models\PageSection;
 use App\Models\Product;
+use App\Support\Content\Sections\ProductSectionImage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
@@ -18,19 +19,40 @@ class ProductGridSection
         $pageName = $config['page_param'] ?? ($section->section_key . '_page');
 
         $query = Product::query()
-            ->with('coverImage')
+            ->with(['coverImage', 'images'])
             ->live()
             ->orderByDesc('updated_at');
 
         static::applySourceFilter($query, $source, $context, $config);
         static::applyManualFilter($query, $source, $config);
 
-        $products = $query
+        $paginator = $query
             ->paginate($limit, ['*'], $pageName)
-            ->withQueryString()
-            ->toArray();
+            ->withQueryString();
 
-        $items = $products['data'] ?? [];
+        $items = $paginator->getCollection()
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'slug' => $product->slug,
+                'category' => $product->category,
+                'description' => $product->description,
+                'is_featured' => $product->is_featured,
+                'is_published' => $product->is_published,
+                'completion_status' => $product->completion_status,
+                'completion_percentage' => $product->completion_percentage,
+                'completion_step' => $product->completion_step,
+                'cover_image_id' => $product->cover_image_id,
+                'created_at' => $product->created_at,
+                'updated_at' => $product->updated_at,
+                'cover_image' => ProductSectionImage::serialize(
+                    ProductSectionImage::resolveForSection($product, $section->type ?? $section->getRawOriginal('type'))
+                ),
+            ])
+            ->values()
+            ->all();
+
+        $products = $paginator->toArray();
         unset($products['data']);
 
         return [

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\ProductImageType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\Builder;
 
 class Product extends Model
 {
@@ -50,7 +51,7 @@ class Product extends Model
 
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class, 'product_id')->orderBy('sort_order');
+        return $this->hasMany(ProductImage::class, 'product_id')->ordered();
     }
 
     public function benefits(): HasMany
@@ -85,6 +86,33 @@ class Product extends Model
             ->withPivot(['id', 'sort_order'])
             ->withTimestamps()
             ->orderByPivot('sort_order');
+    }
+
+    public function getImageByType(ProductImageType|string $type): ?ProductImage
+    {
+        return $this->images()
+            ->ofType($type)
+            ->first();
+    }
+
+    public function getImageByTypeOrCover(ProductImageType|string $type): ?ProductImage
+    {
+        return $this->getImageByType($type) ?? $this->coverImage;
+    }
+
+    public function productDetailMainImage(): ?ProductImage
+    {
+        return $this->getImageByTypeOrCover(ProductImageType::PRODUCT_DETAIL_MAIN);
+    }
+
+    public function featuredCardImage(): ?ProductImage
+    {
+        return $this->getImageByTypeOrCover(ProductImageType::FEATURED_CARD);
+    }
+
+    public function productSelectCardImage(): ?ProductImage
+    {
+        return $this->getImageByTypeOrCover(ProductImageType::PRODUCT_SELECT_CARD);
     }
 
     public function scopeLive(Builder $query): Builder

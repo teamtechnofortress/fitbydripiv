@@ -581,7 +581,7 @@ class ProductSeeder extends Seeder
     private function upsertCoverImage(Product $product, string $imageUrl): void
     {
         $image = ProductImage::updateOrCreate(
-            ['product_id' => $product->id, 'slot_position' => 1],
+            ['product_id' => $product->id],
             [
                 'image_url'  => $imageUrl,
                 'image_type' => 'cover',
