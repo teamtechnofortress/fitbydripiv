@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CmsResearchLink extends Model
 {
@@ -28,9 +27,4 @@ class CmsResearchLink extends Model
         'publication_year' => 'integer',
         'display_order' => 'integer',
     ];
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(CmsProduct::class, 'product_id');
-    }
 }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\CmsCategory;
-
 use App\Models\CmsContactSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,126 +58,6 @@ class CmsAdminController extends Controller
         CmsCategory::findOrFail($id)->delete();
         return response()->json(['success' => true, 'message' => 'Category deleted']);
     }
-
-   
-    public function saveResearchLink(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'id' => 'sometimes|uuid',
-            'product_id' => 'required|uuid|exists:cms_products,id',
-            'title' => 'required|string|max:255',
-            'authors' => 'nullable|string',
-            'journal' => 'nullable|string',
-            'publication_year' => 'nullable|integer',
-            'pubmed_id' => 'nullable|string',
-            'doi' => 'nullable|string',
-            'article_url' => 'nullable|string',
-            'display_order' => 'nullable|integer',
-        ]);
-
-        $link = isset($validated['id'])
-            ? CmsResearchLink::findOrFail($validated['id'])
-            : new CmsResearchLink();
-
-        $link->fill($validated);
-        $link->save();
-
-        return response()->json(['success' => true, 'data' => $link]);
-    }
-
-    public function deleteResearchLink(string $id): JsonResponse
-    {
-        CmsResearchLink::findOrFail($id)->delete();
-        return response()->json(['success' => true, 'message' => 'Research link deleted']);
-    }
-
-    // Pricing Options
-    public function savePricingOption(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'id' => 'sometimes|uuid',
-            'product_id' => 'required|uuid|exists:cms_products,id',
-            'plan_name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'billing_cycle' => 'nullable|string',
-            'supply_duration' => 'nullable|string',
-            'description' => 'nullable|string',
-            'features' => 'nullable|array',
-            'is_popular' => 'nullable|boolean',
-            'display_order' => 'nullable|integer',
-        ]);
-
-        $option = isset($validated['id'])
-            ? CmsPricingOption::findOrFail($validated['id'])
-            : new CmsPricingOption();
-
-        $option->fill($validated);
-        $option->save();
-
-        return response()->json(['success' => true, 'data' => $option]);
-    }
-
-    public function deletePricingOption(string $id): JsonResponse
-    {
-        CmsPricingOption::findOrFail($id)->delete();
-        return response()->json(['success' => true, 'message' => 'Pricing option deleted']);
-    }
-
-    // FAQs
-    public function saveFaq(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'id' => 'sometimes|uuid',
-            'product_id' => 'nullable|uuid|exists:cms_products,id',
-            'category' => 'nullable|string|max:100',
-            'question' => 'required|string',
-            'answer' => 'required|string',
-            'display_order' => 'nullable|integer',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        $faq = isset($validated['id'])
-            ? CmsProductFaq::findOrFail($validated['id'])
-            : new CmsProductFaq();
-
-        $faq->fill($validated);
-        $faq->save();
-
-        return response()->json(['success' => true, 'data' => $faq]);
-    }
-
-    public function deleteFaq(string $id): JsonResponse
-    {
-        CmsProductFaq::findOrFail($id)->delete();
-        return response()->json(['success' => true, 'message' => 'FAQ deleted']);
-    }
-
-    // // Subscription Discounts
-    // public function saveSubscriptionDiscount(Request $request): JsonResponse
-    // {
-    //     $validated = $request->validate([
-    //         'id' => 'sometimes|uuid',
-    //         'product_id' => 'required|uuid|exists:cms_products,id',
-    //         'frequency_months' => 'required|integer|in:1,2,3',
-    //         'discount_percentage' => 'required|numeric|min:0|max:100',
-    //     ]);
-
-    //     $discount = isset($validated['id'])
-    //         ? CmsSubscriptionDiscount::findOrFail($validated['id'])
-    //         : new CmsSubscriptionDiscount();
-
-    //     $discount->fill($validated);
-    //     $discount->save();
-
-    //     return response()->json(['success' => true, 'data' => $discount]);
-    // }
-
-    // public function deleteSubscriptionDiscount(string $id): JsonResponse
-    // {
-    //     CmsSubscriptionDiscount::findOrFail($id)->delete();
-    //     return response()->json(['success' => true, 'message' => 'Subscription discount deleted']);
-    // }
-
     // Site Settings
     public function saveSiteSettings(Request $request): JsonResponse
     {

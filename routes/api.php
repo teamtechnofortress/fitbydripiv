@@ -354,22 +354,6 @@ Route::prefix('v1')->group( function(){
             Route::post('categories', [CmsAdminController::class, 'saveCategory']);
             Route::delete('categories/{id}', [CmsAdminController::class, 'deleteCategory']);
 
-            Route::get('products', [CmsAdminController::class, 'getProducts']);
-            Route::post('products', [CmsAdminController::class, 'saveProduct']);
-            Route::delete('products/{id}', [CmsAdminController::class, 'deleteProduct']);
-
-            Route::post('research-links', [CmsAdminController::class, 'saveResearchLink']);
-            Route::delete('research-links/{id}', [CmsAdminController::class, 'deleteResearchLink']);
-
-            Route::post('pricing-options', [CmsAdminController::class, 'savePricingOption']);
-            Route::delete('pricing-options/{id}', [CmsAdminController::class, 'deletePricingOption']);
-
-            Route::post('faqs', [CmsAdminController::class, 'saveFaq']);
-            Route::delete('faqs/{id}', [CmsAdminController::class, 'deleteFaq']);
-
-            Route::post('subscription-discounts', [CmsAdminController::class, 'saveSubscriptionDiscount']);
-            Route::delete('subscription-discounts/{id}', [CmsAdminController::class, 'deleteSubscriptionDiscount']);
-
             Route::post('site-settings', [CmsAdminController::class, 'saveSiteSettings']);
 
             Route::get('contact-submissions', [CmsAdminController::class, 'getContactSubmissions']);

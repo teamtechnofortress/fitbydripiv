@@ -677,7 +677,7 @@ class ProductSeeder extends Seeder
      * Build the standard subscription pricing grid used by weight-loss and
      * most wellness / longevity products.
      *
-     * Discount tiers mirror the original CmsSubscriptionDiscount records:
+     * Discount tiers mirror the original legacy subscription discount records:
      *   1-month  → 10 %
      *   2-month  → 12 %
      *   3-month  → 15 %
