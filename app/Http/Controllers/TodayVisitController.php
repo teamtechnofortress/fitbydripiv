@@ -6,9 +6,9 @@ use App\Http\Controllers\API\BaseController;
 use Illuminate\Http\Request;
 use App\Models\ChiefComplaint;
 use App\Models\ChiefComplaintNotes;
-use App\Models\Intake1;
 use App\Models\Patient;
 use App\Models\PatientAssessment;
+use App\Models\PatientIntake;
 use App\Models\PatientPhysicalExam;
 use App\Models\PatientPlan;
 use App\Models\PatientProcedure;
@@ -19,6 +19,14 @@ use Illuminate\Support\Facades\Validator;
 
 class TodayVisitController extends BaseController
 {
+    protected function getPatientIntakeForDate(int $patientId, string $date): ?PatientIntake
+    {
+        return PatientIntake::where('patient_id', $patientId)
+            ->where('created_at', '>=', $date)
+            ->latest('created_at')
+            ->first();
+    }
+
     /**
     * addAdminSubjectNotes
     */
@@ -357,7 +365,7 @@ class TodayVisitController extends BaseController
         $success['plan'] = $plan;
 
         //Get the intake1 for date
-        $intake1 = Intake1::where(['patient_id' => $request->pid])->where('created_at', '>=', $request->date)->first();
+        $intake1 = $this->getPatientIntakeForDate((int) $request->pid, $request->date);
         $success['intake1'] = $intake1;
         return $this->sendResponse($success, 'Patient Plan.');       
     }
@@ -431,7 +439,7 @@ class TodayVisitController extends BaseController
         $success['procedure'] = $procedure;
         
         //Get the intake1 for date
-        $intake1 = Intake1::where(['patient_id' => $request->pid])->where('created_at', '>=', $request->date)->first();
+        $intake1 = $this->getPatientIntakeForDate((int) $request->pid, $request->date);
         $success['intake1'] = $intake1;
         return $this->sendResponse($success, 'Patient Procedure.');
     }
@@ -539,7 +547,7 @@ class TodayVisitController extends BaseController
         }
 
         //Get the intake1 for date
-        $intake1 = Intake1::where(['patient_id' => $request->pid])->where('created_at', '>=', $request->date)->first();
+        $intake1 = $this->getPatientIntakeForDate((int) $request->pid, $request->date);
         $success['intake1'] = $intake1;
 
         //Get the patient_physical_exam
@@ -614,7 +622,7 @@ class TodayVisitController extends BaseController
         $success['assessment'] = $patientAssessment;
 
         //Get the intake1 for date
-        $intake1 = Intake1::where(['patient_id' => $request->pid])->where('created_at', '>=', $request->date)->first();
+        $intake1 = $this->getPatientIntakeForDate((int) $request->pid, $request->date);
         $success['intake1'] = $intake1;
         return $this->sendResponse($success, 'Patient Assessment Data.');        
     }

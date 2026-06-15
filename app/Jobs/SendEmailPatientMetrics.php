@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use Carbon\Carbon;
-use App\Models\Intake1;
 use App\Models\Invoice;
 use App\Models\Patient;
 use Illuminate\Bus\Queueable;

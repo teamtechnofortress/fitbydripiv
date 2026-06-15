@@ -6,7 +6,6 @@ use Carbon\Carbon;
 use App\Models\Invoice;
 use Illuminate\Bus\Queueable;
 use App\Models\AppointmentReport;
-use App\Models\Intake1;
 use App\Models\PatientAppointment;
 use App\Models\PatientEncounter;
 use Illuminate\Support\Facades\Mail;

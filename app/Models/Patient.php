@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\Intake1;
 use App\Models\PatientPlan;
 use App\Models\ChiefComplaint;
 use App\Models\PatientEncounter;
@@ -45,10 +44,6 @@ class Patient extends Model
         "alcohol",
         "signature",        
     ];
-
-    public function intake(){
-        return $this->hasMany(Intake1::class, 'patient_id', 'id');
-    }
 
     public function encounter(){
         return $this->hasMany(PatientEncounter::class, 'patient_id', 'id')->where('paid', false);

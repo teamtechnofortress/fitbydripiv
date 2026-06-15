@@ -118,10 +118,6 @@ Route::prefix('v1')->group( function(){
     Route::post('update/patient/{id}', [PatientController::class, 'updatePatient'])->name('updatePatient');
     Route::get('get/patient-by-phone', [PatientController::class, 'getPatientByPhone'])->name('getPatientByPhone');
 
-    Route::post('save/intake1', [PatientController::class, 'saveIntake1'])->name('saveIntake1');
-    Route::post('save/intake2', [PatientController::class, 'saveIntake2'])->name('saveIntake2');
-    Route::post('save/intake3', [PatientController::class, 'saveIntake3'])->name('saveIntake3');
-
     Route::post('save/encounter', [PatientController::class, 'saveEncounter'])->name('saveEncounter');
     Route::get('delete/encounter/{id}', [PatientController::class, 'deleteEncounter'])->name('deleteEncounter');
     Route::post('save/invoice', [PatientController::class, 'saveInvoice'])->name('saveInvoice');   
@@ -254,7 +250,7 @@ Route::prefix('v1')->group( function(){
         Route::get('get/inventories', [InventoryController::class, 'getAllInventory']);
         Route::post('delete/inventory/{id}', [InventoryController::class, 'deleteInventory']);
 
-        //Chief complaint #########################
+        //Chief complaint #########################(From all these apis the intake 1 is replaced iwth the new intake form model )
         Route::post('add/admin-subject-notes', [TodayVisitController::class, 'addAdminSubjectNotes'])->name('addAdminSubjectNotes');
         Route::post('add/admin-object-notes', [TodayVisitController::class, 'addAdminObjectNotes'])->name('addAdminObjectNotes');
         Route::post('add/admin-assessment-notes', [TodayVisitController::class, 'addAdminAssessmentNotes'])->name('addAdminAssessmentNotes');

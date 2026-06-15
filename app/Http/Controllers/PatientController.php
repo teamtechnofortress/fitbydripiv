@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Intake1;
-use App\Models\Intake2;
-use App\Models\Intake3;
 use App\Models\Invoice;
 use App\Models\Patient;
 use App\Models\Inventory;
+use App\Models\PatientIntake;
 use App\Models\PatientPlan;
 use Illuminate\Http\Request;
 use App\Models\BusinessHours;
@@ -27,6 +25,34 @@ use App\Models\ChiefComplaintNotes;
 
 class PatientController extends BaseController
 {
+    protected function getLatestPatientIntake(int $patientId): ?PatientIntake
+    {
+        return PatientIntake::where('patient_id', $patientId)
+            ->latest('created_at')
+            ->first();
+    }
+
+    protected function resolveTreatmentTypeFromIntake(?PatientIntake $intake): string
+    {
+        $goals = collect($intake?->goals ?? [])
+            ->filter(fn ($goal) => is_string($goal))
+            ->map(fn ($goal) => strtolower($goal));
+
+        if ($goals->contains(fn ($goal) => str_contains($goal, 'weight'))) {
+            return 'Weight Loss';
+        }
+
+        if ($goals->contains(fn ($goal) => str_contains($goal, 'inject') || str_contains($goal, 'shot') || str_contains($goal, 'b12') || str_contains($goal, 'peptide'))) {
+            return 'Injectables';
+        }
+
+        if ($goals->contains(fn ($goal) => str_contains($goal, 'iv') || str_contains($goal, 'hydrat') || str_contains($goal, 'recovery') || str_contains($goal, 'energy') || str_contains($goal, 'fatigue') || str_contains($goal, 'headache') || str_contains($goal, 'soreness') || str_contains($goal, 'immunity') || str_contains($goal, 'hangover'))) {
+            return 'IV Therapy';
+        }
+
+        return 'Other';
+    }
+
     /**
      * getPatients
      */
@@ -134,7 +160,9 @@ class PatientController extends BaseController
             return $this->sendError('Error validation', $validator->errors());
         }
         $searchTerm = '%'.$request->fname.'%';
-        $patients = Patient::with('intake')->with('encounter')->where('first_name', 'like', $searchTerm)->get();
+        $patients = Patient::with(['encounter', 'latestIntake', 'intakes'])
+            ->where('first_name', 'like', $searchTerm)
+            ->get();
 
         return $this->sendResponse(true, $patients);
     }
@@ -172,7 +200,9 @@ class PatientController extends BaseController
 
 
         //Get the patient chief complaint's Note via encounter
-        $patient = Patient::with('intake')->with('encounterAll')->with('complaint')->where('id', $request->id)->first();
+        $patient = Patient::with(['encounterAll', 'complaint', 'latestIntake', 'intakes'])
+            ->where('id', $request->id)
+            ->first();
 
         //Get the rewards of this patient.
         $reward = Invoice::where(['deleted' => 0, 'patient_id' => $request->id])->sum('totalPrice');
@@ -276,218 +306,6 @@ class PatientController extends BaseController
         }
 
         return $this->sendResponse(true, $patient);
-    }
-
-
-    /**
-     * saveIntake-1
-     */
-    public function saveIntake1(Request $request){
-        $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'email'      => ['required', 'email', 'max:255'],
-        ]);
-
-        if($validator->fails()){
-            return $this->sendError('Error validation', $validator->errors());
-        }
-
-        if($request->type == 'new'){
-            $isExist = Patient::where('email', $request->email)->exists();
-            if($isExist){
-                return $this->sendError('Error validation', ["$request->email is already being used!."]);
-            }
-        }
-
-        $patientInfo = [
-            "first_name" => $request->first_name,
-            "middle_name" => $request->middle_name,
-            "last_name" => $request->last_name,
-            "email" => $request->email,
-            "birthday" => $request->birthday,
-            "cell" => $request->cell,
-            "phone" => $request->phone,
-            "home" => $request->home,
-            "emergency" => $request->emergency,
-            "contact" => $request->contact,
-            "referred" => $request->referred,
-            "address" => $request->address,
-            "city" => $request->city,
-            "state" => $request->state,
-            "zip" => $request->zip,
-            "age" => $request->age,
-            "gender" => $request->gender,
-            "ethnicity" => $request->ethnicity,
-            "current_conditions" => $request->current_conditions,
-            "current_allergies" => $request->current_allergies,
-            "allergy_reactions" => $request->allergy_reactions,
-            "current_medications" => $request->current_medications,
-            "pregnant" => $request->pregnant,
-            "tobacco" => $request->tobacco,
-            "drug_use" => $request->drug_use,
-            "alcohol" => $request->alcohol ?? 'no',
-            "signature" => $request->signature,
-        ];
-
-        /*
-        * ########### Check if patient is exist on Patient tbl or not. ################
-        * ########### If email is same, then assume as same patient  ################
-        */
-        $patient = Patient::updateOrCreate(
-            ['email' => $request->email], $patientInfo
-        );
-
-        /*
-        * ############ Intake1 ###################
-        */
-        $data = [
-            'patient_id' => $patient->id,
-            'goal_iv'    => $request->goal_iv,
-            'goal_injection' => $request->goal_injection,
-            'goal_other' => $request->goal_other,
-            'weight_loss' => $request->weight_loss,
-            'hydration' => $request->hydration,
-            'energy' => $request->energy,
-            'recovery' => $request->recovery,
-            'pain' => $request->pain,
-            'supplements' => $request->supplements,
-            'fatigue' => $request->fatigue,
-            'headache' => $request->headache,
-            'soreness' => $request->soreness,
-            'current_illness' => $request->current_illness,
-            'recent_illness' => $request->recent_illness,
-            'hangover' => $request->hangover,
-            'low_energy' => $request->low_energy,
-            'immunity' => $request->immunity,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        // Check if intake_1 already exists for today
-        $today = date('Y-m-d');
-        $intake1Id = null;
-
-        $exists = DB::table('intake_1')
-            ->where('patient_id', $patient->id)
-            ->whereDate('created_at', $today)
-            ->first(); 
-
-        if ($exists) {            
-            DB::table('intake_1')
-                ->where('patient_id', $patient->id)
-                ->whereDate('created_at', $today)
-                ->update($data);
-
-            $intake1Id = $exists->id;
-        } else {            
-            $data['patient_id'] = $patient->id;
-            $data['created_at'] = now();
-            $intake1Id = DB::table('intake_1')->insertGetId($data);
-        }
-
-        $patient['intake1_id'] = $intake1Id;
-
-        // If existing patient, intake3 complete
-        if($request->type != 'new'){
-            
-            $exists = DB::table('intake_3')
-                ->where(['patient_id' => $patient->id, 'intake1_id' => $intake1Id])
-                ->whereDate('created_at', $today)
-                ->exists(); 
-
-            if(!$exists){
-                $data = [
-                    'patient_id' => $patient->id,
-                    'intake1_id' => $intake1Id,
-                    'agreedTxt' => "Agreed",
-                    'created_at' => date('Y-m-d H:i:s')
-                ];
-    
-                DB::table('intake_3')->insert($data);
-            }
-        }
-
-        //If emailing required
-        if($request->emailNotify){
-            Mail::send('email.intakeNotification', ['data' => "We will notify risk beefits!"], function($message) use($request){
-
-                $message->to($request->email);
-
-                $message->subject('Email Verification Mail');
-
-            });
-        }
-
-        return $this->sendResponse(true, $patient);
-    }
-
-    /**
-     * saveIntake2
-     */
-    public function saveIntake2(Request $request){
-        $validator = Validator::make($request->all(), [
-            'patient_id'   => 'required|integer|exists:patient,id',
-        ]);
-
-        if($validator->fails()){
-            return $this->sendError('Error validation', $validator->errors());
-        }
-
-        /*
-        * ############ Intake2 ###################
-        */
-        $data = [
-            'patient_id' => $request->patient_id,
-            'constitutional' => $request->constitutional,
-            'head' => $request->head,
-            'eyes' => $request->eyes,
-            'nose' => $request->nose,
-            'mouth' => $request->mouth,
-            'ears' => $request->ears,
-            'throat_neck' => $request->throat_neck,
-            'respiratory' => $request->respiratory,
-            'cardiovascular' => $request->cardiovascular,
-            'gastrointestinal' => $request->gastrointestinal,
-            'musculoskeletal' => $request->musculoskeletal,
-            'skin' => $request->skin,
-            'endocrine' => $request->endocrine,
-            'urinary' => $request->urinary,
-            'male_genitalia' => $request->male_genitalia,
-            'neurological' => $request->neurological,
-            'intake1_id' => $request->intake1_id,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        DB::table('intake_2')->insert($data);
-
-        return $this->sendResponse(true, 'Successfully imported intake-2!');
-    }
-
-    /**
-     * saveIntake3
-     */
-    public function saveIntake3(Request $request){
-        $validator = Validator::make($request->all(), [
-            'patient_id'   => 'required|integer|exists:patient,id',
-        ]);
-
-        if($validator->fails()){
-            return $this->sendError('Error validation', $validator->errors());
-        }
-
-        /*
-        * ############ Intake3 ###################
-        */
-        $data = [
-            'patient_id' => $request->patient_id,
-            'intake1_id' => $request->intake1_id,
-            'agreedTxt' => $request->agreedTxt,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        DB::table('intake_3')->insert($data);
-
-        return $this->sendResponse(true, 'Successfully imported intake-3!');
     }
 
     /**
@@ -619,8 +437,8 @@ class PatientController extends BaseController
         }
 
         // Get arrival due
-        $intake1 = Intake1::where('patient_id', $request->patient_id)->first();
-        $arrival_due = $intake1 ? $intake1->created_at->diffInSeconds(now('UTC'), false) : null;
+        $intake = $this->getLatestPatientIntake((int) $request->patient_id);
+        $arrival_due = $intake?->created_at?->diffInSeconds(now('UTC'), false);
 
         $invoice = [
             'patient_id' => $request->patient_id,
@@ -670,11 +488,6 @@ class PatientController extends BaseController
             });
         }
 
-        // Remove intake tables
-        Intake1::where('patient_id', $request->patient_id)->delete();
-        Intake2::where('patient_id', $request->patient_id)->delete();
-        Intake3::where('patient_id', $request->patient_id)->delete();
-
         return $this->sendResponse(true, 'Successfully saved invoice!');
     }
 
@@ -719,8 +532,10 @@ class PatientController extends BaseController
     */
     public function GetPatientQue(Request $request){
 
-        //Get the today intake3
-        $intakes = Intake3::orderBy('id', 'DESC')->where('created_at', '>=', date('Y-m-d 00:00:00'))->with('patient')->get();
+        $intakes = PatientIntake::orderBy('id', 'DESC')
+            ->whereDate('created_at', date('Y-m-d'))
+            ->with('patient')
+            ->get();
 
         foreach($intakes as $intake){//today visit
             $intake->patient->complaint = ChiefComplaint::where('patient_id', $intake->patient->id)
@@ -729,17 +544,7 @@ class PatientController extends BaseController
             //if no complaint found, then create new Chief Complaint (today visit)
             if(!$intake->patient->complaint){
                 $intake->patient->complaint = new ChiefComplaint();
-
-                //get the treatment_type from intake_1
-                $intake1 = Intake1::where('id', $intake->intake1_id)->first();
-
-                if($intake1){
-                    $intake->patient->complaint->treatment_type = 
-                        $intake1->goal_iv ? "IV Therapy" : 
-                        ($intake1->goal_injection ? "Injectables" : ($intake1->goal_other ? "Other" : "Weight Loss"));
-                }else {
-                    $intake->patient->complaint->treatment_type = "Other";
-                }
+                $intake->patient->complaint->treatment_type = $this->resolveTreatmentTypeFromIntake($intake);
                 
                 $intake->patient->complaint->patient_id = $intake->patient->id;
                 $intake->patient->complaint->staff_id = Auth()->user()->id;
@@ -789,9 +594,6 @@ class PatientController extends BaseController
         /*
         * ########### Patient related data remove ################
         */
-        Intake1::where('patient_id', $id)->delete();
-        Intake2::where('patient_id', $id)->delete();
-        Intake3::where('patient_id', $id)->delete();
         Invoice::where('patient_id', $id)->delete();
         PatientEncounter::where('patient_id', $id)->delete();
 
