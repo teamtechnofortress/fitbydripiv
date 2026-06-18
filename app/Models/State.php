@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class State extends Model
 {
@@ -24,6 +25,11 @@ class State extends Model
     public function mappings(): HasMany
     {
         return $this->hasMany(NetworkStateMapping::class, 'state_id');
+    }
+
+    public function configurableRules(): MorphMany
+    {
+        return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');
     }
 
     public function scopeActive(Builder $query): Builder

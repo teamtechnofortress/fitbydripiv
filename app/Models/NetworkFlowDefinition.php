@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class NetworkFlowDefinition extends Model
 {
@@ -41,6 +42,11 @@ class NetworkFlowDefinition extends Model
             'priority',
             'is_active',
         ])->withTimestamps();
+    }
+
+    public function configurableRules(): MorphMany
+    {
+        return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');
     }
 
     public function scopeActive(Builder $query): Builder

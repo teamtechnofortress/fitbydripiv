@@ -64,6 +64,11 @@ class Product extends Model
         return $this->morphMany(Faq::class, 'scope')->orderBy('sort_order');
     }
 
+    public function configurableRules(): MorphMany
+    {
+        return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');
+    }
+
     public function researchLinks(): HasMany
     {
         return $this->hasMany(ProductResearchLink::class, 'product_id')->orderBy('sort_order');

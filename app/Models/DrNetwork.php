@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class DrNetwork extends Model
 {
@@ -71,6 +72,11 @@ class DrNetwork extends Model
             'priority',
             'is_active',
         ])->withTimestamps();
+    }
+
+    public function configurableRules(): MorphMany
+    {
+        return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');
     }
 
     public function setStatusAttribute(string $value): void
