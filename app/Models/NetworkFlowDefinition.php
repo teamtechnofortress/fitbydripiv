@@ -44,6 +44,11 @@ class NetworkFlowDefinition extends Model
         ])->withTimestamps();
     }
 
+    public function intakeQuestionSets(): HasMany
+    {
+        return $this->hasMany(NetworkIntakeQuestionSet::class, 'flow_id');
+    }
+
     public function configurableRules(): MorphMany
     {
         return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');

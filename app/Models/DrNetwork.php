@@ -73,6 +73,30 @@ class DrNetwork extends Model
             'is_active',
         ])->withTimestamps();
     }
+    public function documentRules(): HasMany
+    {
+        return $this->hasMany(NetworkDocumentRule::class, 'dr_network_id')->orderBy('priority');
+    }
+
+    public function intakeQuestionSets(): HasMany
+    {
+        return $this->hasMany(NetworkIntakeQuestionSet::class, 'dr_network_id');
+    }
+
+    public function productMappings(): HasMany
+    {
+        return $this->hasMany(NetworkProductMapping::class, 'dr_network_id');
+    }
+
+    public function products(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'network_product_mappings',
+            'dr_network_id',
+            'product_id'
+        )->withPivot(['identifier', 'is_active'])->withTimestamps();
+    }
 
     public function configurableRules(): MorphMany
     {

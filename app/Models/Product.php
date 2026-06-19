@@ -84,6 +84,11 @@ class Product extends Model
         return $this->hasMany(ProductIngredientMap::class, 'product_id')->orderBy('sort_order');
     }
 
+    public function networkMappings(): HasMany
+    {
+        return $this->hasMany(NetworkProductMapping::class, 'product_id');
+    }
+
     public function ingredients(): BelongsToMany
     {
         return $this->belongsToMany(Ingredient::class, 'product_ingredient_map', 'product_id', 'ingredient_id')
@@ -91,6 +96,16 @@ class Product extends Model
             ->withPivot(['id', 'sort_order'])
             ->withTimestamps()
             ->orderByPivot('sort_order');
+    }
+
+    public function drNetworks(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            DrNetwork::class,
+            'network_product_mappings',
+            'product_id',
+            'dr_network_id'
+        )->withPivot(['identifier', 'is_active'])->withTimestamps();
     }
 
     public function getImageByType(ProductImageType|string $type): ?ProductImage
