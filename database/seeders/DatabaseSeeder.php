@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             StateSeeder::class,
             DocumentTypeSeeder::class,
-            OlaHealthProductMappingSeeder::class,
+            OlaHealthSeeder::class,
             // CmsSeeder::class,
             SettingSeeder::class,
             GlobalSectionSeeder::class,

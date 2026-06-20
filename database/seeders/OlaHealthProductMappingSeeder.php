@@ -21,11 +21,7 @@ class OlaHealthProductMappingSeeder extends Seeder
         }
 
         $mappings = [
-            'semaglutide' => 'weight-loss-semaglutide-injection',
-            'tirzepatide' => 'weight-loss-tirzepatide-injection',
-            'glutathione' => 'wellness-glutathione-injection',
-            'b12-injection' => 'wellness-b12-methylcobalamin-injection',
-            'nad-therapy' => 'wellness-nad-plus-therapy',
+            'semaglutide' => 'weight-loss-semaglutide-injection-advanta-rx',
         ];
 
         $seededCount = 0;
