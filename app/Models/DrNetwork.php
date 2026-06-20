@@ -88,6 +88,11 @@ class DrNetwork extends Model
         return $this->hasMany(NetworkProductMapping::class, 'dr_network_id');
     }
 
+    public function flowRuns(): HasMany
+    {
+        return $this->hasMany(DrNetworkFlowRun::class, 'dr_network_id');
+    }
+
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(

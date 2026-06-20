@@ -49,6 +49,11 @@ class NetworkFlowDefinition extends Model
         return $this->hasMany(NetworkIntakeQuestionSet::class, 'flow_id');
     }
 
+    public function flowRuns(): HasMany
+    {
+        return $this->hasMany(DrNetworkFlowRun::class, 'flow_id');
+    }
+
     public function configurableRules(): MorphMany
     {
         return $this->morphMany(ConfigurableRule::class, 'ruleable')->orderBy('execution_order');

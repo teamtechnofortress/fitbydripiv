@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Str;
 
@@ -27,6 +28,11 @@ class Order extends Model
         'order_uuid',
         'patient_id',
         'product_id',
+        'state_code',
+        'dr_network_id',
+        'network_flow_id',
+        'network_flow_key',
+        'network_product_identifier',
         'price',
         'currency',
         'subscription_id',
@@ -83,6 +89,21 @@ class Order extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function drNetwork(): BelongsTo
+    {
+        return $this->belongsTo(DrNetwork::class, 'dr_network_id');
+    }
+
+    public function networkFlow(): BelongsTo
+    {
+        return $this->belongsTo(NetworkFlowDefinition::class, 'network_flow_id');
+    }
+
+    public function flowRun(): HasOne
+    {
+        return $this->hasOne(DrNetworkFlowRun::class, 'order_id');
     }
 
     public function pricingOption(): BelongsTo
