@@ -103,6 +103,12 @@ class CmsPublicController extends Controller
         ]);
     }
 
+     public function getSiteSettings(): JsonResponse
+    {
+        $settings = CmsSiteSetting::find(1);
+        return response()->json(['success' => true, 'data' => $settings]);
+    }
+
 
     public function submitContact(Request $request): JsonResponse
     {

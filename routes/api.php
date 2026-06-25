@@ -376,7 +376,7 @@ Route::prefix('v1')->group( function(){
         Route::get('products/{slug}/pricing', [CmsPublicController::class, 'getProductPricing']);
         Route::get('faqs', [CmsPublicController::class, 'getFaqs']);
         Route::get('faqs/category/{category}', [CmsPublicController::class, 'getFaqsByCategory']);
-        // Route::get('site-settings', [CmsPublicController::class, 'getSiteSettings']);
+        Route::get('site-settings', [CmsPublicController::class, 'getSiteSettings']);
         Route::post('contact', [CmsPublicController::class, 'submitContact']);
     });
 
@@ -392,5 +392,6 @@ Route::prefix('v1')->group( function(){
     Route::get('pages', [ContentPublicController::class, 'getPages']);
     Route::get('pages/{slug}', [ContentPublicController::class, 'getPageBySlug'])
         ->where('slug', '.+');
+    
 
 });
