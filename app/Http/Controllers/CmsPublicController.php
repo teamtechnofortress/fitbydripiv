@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\enums\SectionType;
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
+use App\Models\CmsSiteSetting;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Support\Content\Sections\ProductSectionImage;

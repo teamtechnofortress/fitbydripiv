@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
+use App\Models\CmsSiteSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
