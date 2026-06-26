@@ -7,6 +7,7 @@ use App\Models\Patient;
 use App\Models\PatientIntake;
 use App\Services\CheckoutResponseService;
 use App\Services\IdempotencyService;
+use App\Services\StateCodeResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,9 +17,9 @@ class PatientIntakeController extends Controller
 {
     public function __construct(
         protected IdempotencyService $idempotencyService,
-        protected CheckoutResponseService $checkoutResponseService
-    ) {
-    }
+        protected CheckoutResponseService $checkoutResponseService,
+        protected StateCodeResolver $stateCodeResolver
+    ) {}
 
     public function fetchByEmail(Request $request): JsonResponse
     {
@@ -30,7 +31,7 @@ class PatientIntakeController extends Controller
             ->where('email', $validated['email'])
             ->first();
 
-        if (!$patient) {
+        if (! $patient) {
             return response()->json([
                 'message' => 'Patient not found.',
             ], 404);
@@ -115,6 +116,17 @@ class PatientIntakeController extends Controller
             'allergyReactions' => ['nullable', 'string'],
         ]);
 
+        $stateCode = $this->stateCodeResolver->resolve($validated['state']);
+
+        if (! $stateCode) {
+            return response()->json([
+                'message' => 'The selected state is not supported.',
+                'errors' => [
+                    'state' => ['Please provide a valid US state name or state code.'],
+                ],
+            ], 422);
+        }
+
         $order = Order::where('order_uuid', $orderUuid)->first();
 
         if (! $order) {
@@ -195,6 +207,7 @@ class PatientIntakeController extends Controller
             $validated,
             [
                 'orderUuid' => $orderUuid,
+                'stateCode' => $stateCode,
                 'medicalScreening' => $medical,
                 'currentConditions' => $currentConditions,
                 'additionalConditions' => $additionalConditions,
@@ -218,88 +231,90 @@ class PatientIntakeController extends Controller
             $request->header('Idempotency-Key'),
             'patients.intake-form',
             $idempotencyPayload,
-            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone) {
-                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone) {
+            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
+                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
                     Log::info('Intake transaction started', [
                         'order_id' => $order->id,
                         'email' => $validated['email'],
                     ]);
-            // ─────────────────────────────────────────────────────────────
-            // 1. CREATE OR UPDATE PATIENT
-            // ─────────────────────────────────────────────────────────────
-            $patient = Patient::firstOrNew(['email' => $validated['email']]);
-            $patient->fill([
-            'first_name' => $validated['firstName'],
-            'middle_name' => $validated['middleName'] ?? null,
-            'last_name' => $validated['lastName'],
-            'phone' => $phone,
-            'address' => $validated['address'],
-            'city' => $validated['city'],
-            'state' => $validated['state'],
-            'zip' => $validated['zip'],
-            'birthday' => $validated['dateOfBirth'],
-            'age' => $validated['age'] ?? null,
-            'gender' => $validated['gender'] ?? null,
-            'ethnicity' => $validated['ethnicity'] ?? null,
-        ]);
-        $patient->save();
- 
-        // ─────────────────────────────────────────────────────────────
-        // 2. PREPARE MEDICAL SCREENING WITH DEFAULTS
-        // ─────────────────────────────────────────────────────────────
-        // All medical screening questions default to "no" if not provided
-        $processedMedical = [
-            'diabetes' => $medical['diabetes'] ?? 'no',
-            'blood_thinners' => $medical['bloodThinners'] ?? 'no',
-            'alcohol' => $medical['alcohol'] ?? 'no',
-            'glp_history' => $medical['glpHistory'] ?? 'no',
-            'pancreatitis' => $medical['pancreatitis'] ?? 'no',
-            'thyroid_cancer' => $medical['thyroidCancer'] ?? 'no',
-            'renal_impairment' => $medical['renalImpairment'] ?? 'no',
-        ];
- 
-            // ─────────────────────────────────────────────────────────────
-            // 3. PREPARE INTAKE DATA
-            // ─────────────────────────────────────────────────────────────
-            $intakeData = [
-                'patient_type' => $validated['patientType'] ?? 'new',
-            // Medical screening with defaults
-            'diabetes' => $processedMedical['diabetes'],
-            'blood_thinners' => $processedMedical['blood_thinners'],
-            'alcohol' => $processedMedical['alcohol'],
-            'glp_history' => $processedMedical['glp_history'],
-            'pancreatitis' => $processedMedical['pancreatitis'],
-            'thyroid_cancer' => $processedMedical['thyroid_cancer'],
-            'renal_impairment' => $processedMedical['renal_impairment'],
-                // Goals (required, validated above)
-                'goals' => $request->input('goals', []),
-                // Other optional fields (default to empty/null if not provided)
-                'current_conditions' => $currentConditions,
-                'additional_conditions' => $additionalConditions,
-                'medical_history' => $medicalHistory,
-                'medications' => $medications,
-                'current_conditions_notes' => $currentConditionsNotes,
-                'allergies' => $allergies,
-                'allergy_reactions' => $allergyReactions,
-            ];
- 
-        // ─────────────────────────────────────────────────────────────
-        // 4. CREATE OR UPDATE INTAKE
-        // ─────────────────────────────────────────────────────────────
-        $intake = $patient->latestIntake()->first();
+                    // ─────────────────────────────────────────────────────────────
+                    // 1. CREATE OR UPDATE PATIENT
+                    // ─────────────────────────────────────────────────────────────
+                    $patient = Patient::firstOrNew(['email' => $validated['email']]);
+                    $patient->fill([
+                        'first_name' => $validated['firstName'],
+                        'middle_name' => $validated['middleName'] ?? null,
+                        'last_name' => $validated['lastName'],
+                        'phone' => $phone,
+                        'address' => $validated['address'],
+                        'city' => $validated['city'],
+                        'state' => $validated['state'],
+                        'zip' => $validated['zip'],
+                        'birthday' => $validated['dateOfBirth'],
+                        'age' => $validated['age'] ?? null,
+                        'gender' => $validated['gender'] ?? null,
+                        'ethnicity' => $validated['ethnicity'] ?? null,
+                    ]);
+                    $patient->save();
 
-        if ($intake) {
-            $intake->update($intakeData);
-        } else {
-            $intake = $patient->intakes()->create($intakeData);
-        }
+                    // ─────────────────────────────────────────────────────────────
+                    // 2. PREPARE MEDICAL SCREENING WITH DEFAULTS
+                    // ─────────────────────────────────────────────────────────────
+                    // All medical screening questions default to "no" if not provided
+                    $processedMedical = [
+                        'diabetes' => $medical['diabetes'] ?? 'no',
+                        'blood_thinners' => $medical['bloodThinners'] ?? 'no',
+                        'alcohol' => $medical['alcohol'] ?? 'no',
+                        'glp_history' => $medical['glpHistory'] ?? 'no',
+                        'pancreatitis' => $medical['pancreatitis'] ?? 'no',
+                        'thyroid_cancer' => $medical['thyroidCancer'] ?? 'no',
+                        'renal_impairment' => $medical['renalImpairment'] ?? 'no',
+                    ];
 
-                    if ($order->patient_id !== $patient->id) {
+                    // ─────────────────────────────────────────────────────────────
+                    // 3. PREPARE INTAKE DATA
+                    // ─────────────────────────────────────────────────────────────
+                    $intakeData = [
+                        'patient_type' => $validated['patientType'] ?? 'new',
+                        // Medical screening with defaults
+                        'diabetes' => $processedMedical['diabetes'],
+                        'blood_thinners' => $processedMedical['blood_thinners'],
+                        'alcohol' => $processedMedical['alcohol'],
+                        'glp_history' => $processedMedical['glp_history'],
+                        'pancreatitis' => $processedMedical['pancreatitis'],
+                        'thyroid_cancer' => $processedMedical['thyroid_cancer'],
+                        'renal_impairment' => $processedMedical['renal_impairment'],
+                        // Goals (required, validated above)
+                        'goals' => $request->input('goals', []),
+                        // Other optional fields (default to empty/null if not provided)
+                        'current_conditions' => $currentConditions,
+                        'additional_conditions' => $additionalConditions,
+                        'medical_history' => $medicalHistory,
+                        'medications' => $medications,
+                        'current_conditions_notes' => $currentConditionsNotes,
+                        'allergies' => $allergies,
+                        'allergy_reactions' => $allergyReactions,
+                    ];
+
+                    // ─────────────────────────────────────────────────────────────
+                    // 4. CREATE OR UPDATE INTAKE
+                    // ─────────────────────────────────────────────────────────────
+                    $intake = $patient->latestIntake()->first();
+
+                    if ($intake) {
+                        $intake->update($intakeData);
+                    } else {
+                        $intake = $patient->intakes()->create($intakeData);
+                    }
+
+                    if ($order->patient_id !== $patient->id || $order->state_code !== $stateCode) {
                         $order->patient_id = $patient->id;
+                        $order->state_code = $stateCode;
                         $order->save();
                         Log::info('Order linked to patient', [
                             'order_id' => $order->id,
                             'patient_id' => $patient->id,
+                            'state_code' => $stateCode,
                         ]);
                     }
 
@@ -325,7 +340,6 @@ class PatientIntakeController extends Controller
 
         return response()->json($result, 201);
     }
-
 
     public function store(Request $request, int $patientId): JsonResponse
     {

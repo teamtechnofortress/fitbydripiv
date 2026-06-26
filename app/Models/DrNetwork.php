@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
-use InvalidArgumentException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use InvalidArgumentException;
 
 class DrNetwork extends Model
 {
@@ -60,6 +60,36 @@ class DrNetwork extends Model
         return $this->hasMany(NetworkStateMapping::class, 'dr_network_id');
     }
 
+    public function configValues(): HasMany
+    {
+        return $this->hasMany(DrNetworkConfigValue::class, 'dr_network_id');
+    }
+
+    public function configValue(string $key, mixed $default = null): mixed
+    {
+        $normalizedKey = DrNetworkConfigValue::normalizeKey($key);
+
+        $configValue = $this->relationLoaded('configValues')
+            ? $this->configValues->firstWhere('key', $normalizedKey)
+            : $this->configValues()->where('key', $normalizedKey)->first();
+
+        return $configValue?->typedValue() ?? $default;
+    }
+
+    public function configValuesArray(bool $includeSecrets = true): array
+    {
+        $values = $this->relationLoaded('configValues')
+            ? $this->configValues
+            : $this->configValues()->get();
+
+        return $values
+            ->when(! $includeSecrets, fn ($values) => $values->where('is_secret', false))
+            ->mapWithKeys(fn (DrNetworkConfigValue $value): array => [
+                $value->key => $value->typedValue(),
+            ])
+            ->all();
+    }
+
     public function flowDefinitions(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -73,6 +103,7 @@ class DrNetwork extends Model
             'is_active',
         ])->withTimestamps();
     }
+
     public function documentRules(): HasMany
     {
         return $this->hasMany(NetworkDocumentRule::class, 'dr_network_id')->orderBy('priority');
@@ -91,6 +122,11 @@ class DrNetwork extends Model
     public function flowRuns(): HasMany
     {
         return $this->hasMany(DrNetworkFlowRun::class, 'dr_network_id');
+    }
+
+    public function webhookEvents(): HasMany
+    {
+        return $this->hasMany(DrNetworkWebhookEvent::class, 'dr_network_id');
     }
 
     public function products(): BelongsToMany

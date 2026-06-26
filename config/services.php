@@ -37,11 +37,18 @@ return [
         'from' => env('TWILIO_PHONE_NUMBER'),
     ],
 
-'stripe' => [
+    'stripe' => [
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-        'success_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/') . '/payment/success?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/') . '/payment/cancel',
+        'success_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/').'/payment/success?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => rtrim(env('APP_FRONTEND_URL', 'http://localhost:5173'), '/').'/payment/cancel',
+    ],
+
+    'ola_health' => [
+        'base_url' => env('OLA_HEALTH_API_URL'),
+        'auth_token' => env('OLA_HEALTH_AUTH_TOKEN'),
+        'secret_token' => env('OLA_HEALTH_SECRET_TOKEN'),
+        'tenant' => env('OLA_HEALTH_TENANT'),
     ],
 ];

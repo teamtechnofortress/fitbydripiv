@@ -2,7 +2,6 @@
 
 namespace App\Services\DrNetwork\Resolvers;
 
-use App\Models\DrNetwork;
 use App\Models\NetworkStateMapping;
 use App\Models\State;
 
@@ -22,11 +21,13 @@ class NetworkStateResolver
         $mapping = NetworkStateMapping::query()
             ->forState($state->id)
             ->active()
+            ->whereHas('drNetwork', fn ($query) => $query->active())
+            ->whereHas('flowDefinition', fn ($query) => $query->active())
             ->ordered()
             ->with(['drNetwork', 'flowDefinition'])
             ->first();
 
-        if (! $mapping || ! $mapping->drNetwork || $mapping->drNetwork->status !== DrNetwork::STATUS_ACTIVE) {
+        if (! $mapping) {
             return null;
         }
 

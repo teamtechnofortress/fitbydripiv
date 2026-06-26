@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\DrNetwork\StartDrNetworkFlowForPaidOrderJob;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\StripeWebhookEvent;
@@ -28,47 +29,48 @@ class StripeWebhookService
         if ($existing && $existing->processed) {
             Log::info('Stripe webhook event already processed — skipping', [
                 'event_id' => $event->id,
-                'type'     => $event->type,
+                'type' => $event->type,
             ]);
+
             return;
         }
 
         // Create a record if this is the first time we've seen this event.
         $webhookEvent = $existing ?? StripeWebhookEvent::create([
             'stripe_event_id' => $event->id,
-            'event_type'      => $event->type,
-            'payload_json'    => json_decode(json_encode($event), true), // stdClass → array
-            'processed'       => false,
-            'webhookable_id'   => null,
+            'event_type' => $event->type,
+            'payload_json' => json_decode(json_encode($event), true), // stdClass → array
+            'processed' => false,
+            'webhookable_id' => null,
             'webhookable_type' => null,
         ]);
 
         DB::transaction(function () use ($event, $webhookEvent) {
             match ($event->type) {
                 // Subscription checkout completed (mode = "subscription")
-                'checkout.session.completed'      => $this->handleCheckoutSessionCompleted($event->data->object, $webhookEvent),
+                'checkout.session.completed' => $this->handleCheckoutSessionCompleted($event->data->object, $webhookEvent),
 
                 // Recurring invoice paid (covers both first cycle and renewals)
-                'invoice.payment_succeeded'       => $this->handleInvoicePaymentSucceeded($event->data->object, $webhookEvent),
+                'invoice.payment_succeeded' => $this->handleInvoicePaymentSucceeded($event->data->object, $webhookEvent),
 
                 // Invoice payment failed (retry or final failure)
-                'invoice.payment_failed'          => $this->handleInvoicePaymentFailed($event->data->object, $webhookEvent),
+                'invoice.payment_failed' => $this->handleInvoicePaymentFailed($event->data->object, $webhookEvent),
 
                 // Subscription deleted/cancelled in Stripe (manual cancel, final failure, etc.)
-                'customer.subscription.deleted'   => $this->handleSubscriptionDeleted($event->data->object, $webhookEvent),
+                'customer.subscription.deleted' => $this->handleSubscriptionDeleted($event->data->object, $webhookEvent),
 
                 // Subscription status changed (paused, resumed, trial started, etc.)
-                'customer.subscription.updated'   => $this->handleSubscriptionUpdated($event->data->object, $webhookEvent),
+                'customer.subscription.updated' => $this->handleSubscriptionUpdated($event->data->object, $webhookEvent),
 
                 // One-time payment succeeded (non-subscription checkout or direct PaymentIntent)
-                'payment_intent.succeeded'        => $this->handlePaymentIntentSucceeded($event->data->object, $webhookEvent),
-                'payment_intent.payment_failed'   => $this->handlePaymentIntentFailed($event->data->object, $webhookEvent),
+                'payment_intent.succeeded' => $this->handlePaymentIntentSucceeded($event->data->object, $webhookEvent),
+                'payment_intent.payment_failed' => $this->handlePaymentIntentFailed($event->data->object, $webhookEvent),
 
                 default => Log::info('Stripe webhook event type not handled', ['type' => $event->type]),
             };
 
             $webhookEvent->update([
-                'processed'    => true,
+                'processed' => true,
                 'processed_at' => now(),
             ]);
         });
@@ -93,8 +95,9 @@ class StripeWebhookService
         if (! $order) {
             Log::warning('checkout.session.completed: no matching order found', [
                 'session_id' => $session->id,
-                'order_id'   => $orderId,
+                'order_id' => $orderId,
             ]);
+
             return;
         }
 
@@ -103,8 +106,8 @@ class StripeWebhookService
         $paymentIntentId = $session->payment_intent ?? $order->stripe_payment_intent_id ?? null;
 
         $order->update([
-            'payment_status'          => 'paid',
-            'status'                  => 'completed',
+            'payment_status' => 'paid',
+            'status' => 'completed',
             'stripe_payment_intent_id' => $paymentIntentId,
         ]);
 
@@ -112,12 +115,12 @@ class StripeWebhookService
         // re-delivered.
         if (! Payment::where('order_id', $order->id)->where('status', 'paid')->exists()) {
             Payment::create([
-                'order_id'                 => $order->id,
+                'order_id' => $order->id,
                 'stripe_payment_intent_id' => $paymentIntentId,
-                'amount'                   => $order->price,
-                'currency'                 => $order->currency,
-                'status'                   => 'paid',
-                'failure_reason'           => null,
+                'amount' => $order->price,
+                'currency' => $order->currency,
+                'status' => 'paid',
+                'failure_reason' => null,
             ]);
         }
 
@@ -129,35 +132,35 @@ class StripeWebhookService
         if ($order->purchase_type === 'subscription' && ! $order->subscription_id) {
 
             $stripeSubscriptionId = $session->subscription ?? null;
-            $metadata             = $this->normalizeMetadata($session->metadata ?? null);
-            $frequency            = $this->metadataInt($metadata, 'frequency_months') ?? $this->resolveFrequencyMonths($order);
-            $totalCycles          = $this->metadataInt($metadata, 'total_cycles') ?? $this->resolveTotalCycles($order);
+            $metadata = $this->normalizeMetadata($session->metadata ?? null);
+            $frequency = $this->metadataInt($metadata, 'frequency_months') ?? $this->resolveFrequencyMonths($order);
+            $totalCycles = $this->metadataInt($metadata, 'total_cycles') ?? $this->resolveTotalCycles($order);
 
             $subscription = Subscription::create([
-                'order_id'                => $order->id,
-                'patient_id'              => $order->patient_id,
-                'product_id'              => $order->product_id,
-                'pricing_option_id'       => $this->metadataString($metadata, 'pricing_option_id') ?? $order->pricing_option_id,
-                'coupon_id'               => null,
-                'coupon_code'             => null,
-                'current_cycle_number'    => 1,
-                'total_cycles'            => $totalCycles,
-                'stripe_subscription_id'  => $stripeSubscriptionId,
-                'stripe_customer_id'      => $session->customer ?? null,
+                'order_id' => $order->id,
+                'patient_id' => $order->patient_id,
+                'product_id' => $order->product_id,
+                'pricing_option_id' => $this->metadataString($metadata, 'pricing_option_id') ?? $order->pricing_option_id,
+                'coupon_id' => null,
+                'coupon_code' => null,
+                'current_cycle_number' => 1,
+                'total_cycles' => $totalCycles,
+                'stripe_subscription_id' => $stripeSubscriptionId,
+                'stripe_customer_id' => $session->customer ?? null,
                 'billing_frequency_months' => $frequency,
-                'discount_percentage'     => $this->metadataDecimal($metadata, 'discount_percentage') ?? $this->resolveDiscountPercentage($order),
-                'base_recurring_amount'   => $this->metadataDecimal($metadata, 'base_recurring_amount'),
+                'discount_percentage' => $this->metadataDecimal($metadata, 'discount_percentage') ?? $this->resolveDiscountPercentage($order),
+                'base_recurring_amount' => $this->metadataDecimal($metadata, 'base_recurring_amount'),
                 'discounted_recurring_amount' => $this->metadataDecimal($metadata, 'discounted_recurring_amount') ?? round((float) $order->price, 2),
-                'discount_duration_type'  => $this->metadataString($metadata, 'discount_duration_type'),
+                'discount_duration_type' => $this->metadataString($metadata, 'discount_duration_type'),
                 'discount_remaining_cycles' => $this->metadataInt($metadata, 'discount_remaining_cycles'),
-                'start_date'              => today(),
-                'next_billing_date'       => now()->addMonths($frequency)->toDateString(),
-                'end_date'                => null,
-                'status'                  => 'active',
+                'start_date' => today(),
+                'next_billing_date' => now()->addMonths($frequency)->toDateString(),
+                'end_date' => null,
+                'status' => 'active',
             ]);
 
             $order->update([
-                'subscription_id'     => $subscription->id,
+                'subscription_id' => $subscription->id,
                 'billing_cycle_number' => 1,
             ]);
 
@@ -188,11 +191,13 @@ class StripeWebhookService
             }
 
             Log::info('Subscription created from checkout.session.completed', [
-                'subscription_id'        => $subscription->id,
+                'subscription_id' => $subscription->id,
                 'stripe_subscription_id' => $stripeSubscriptionId,
-                'order_id'               => $order->id,
+                'order_id' => $order->id,
             ]);
         }
+
+        $this->dispatchDrNetworkStart($order);
     }
 
     // ---------------------------------------------------------------------------
@@ -221,8 +226,9 @@ class StripeWebhookService
         if (! $subscription) {
             Log::warning('invoice.payment_succeeded: no matching local subscription found', [
                 'stripe_subscription_id' => $invoice->subscription,
-                'invoice_id'             => $invoice->id,
+                'invoice_id' => $invoice->id,
             ]);
+
             return;
         }
 
@@ -253,17 +259,18 @@ class StripeWebhookService
 
             if ($originalOrder && ! Payment::where('order_id', $originalOrder->id)->where('status', 'paid')->exists()) {
                 Payment::create([
-                    'order_id'                 => $originalOrder->id,
+                    'order_id' => $originalOrder->id,
                     'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
-                    'amount'                   => round(((float) ($invoice->amount_paid ?? 0)) / 100, 2),
-                    'currency'                 => strtoupper($invoice->currency ?? 'USD'),
-                    'status'                   => 'paid',
-                    'failure_reason'           => null,
+                    'amount' => round(((float) ($invoice->amount_paid ?? 0)) / 100, 2),
+                    'currency' => strtoupper($invoice->currency ?? 'USD'),
+                    'status' => 'paid',
+                    'failure_reason' => null,
                 ]);
             }
 
             $webhookEvent->webhookable()->associate($subscription);
             $webhookEvent->save();
+
             return;
         }
 
@@ -276,6 +283,7 @@ class StripeWebhookService
             ]);
             $webhookEvent->webhookable()->associate($subscription);
             $webhookEvent->save();
+
             return;
         }
 
@@ -287,38 +295,38 @@ class StripeWebhookService
         $finalAmount = round(((float) ($invoice->amount_paid ?? 0)) / 100, 2);
 
         $order = Order::create([
-            'patient_id'               => $subscription->patient_id,
-            'product_id'               => $subscription->product_id,
-            'price'                    => $finalAmount,
-            'currency'                 => strtoupper($invoice->currency ?? 'USD'),
-            'subscription_id'          => $subscription->id,
-            'billing_cycle_number'     => $nextCycle,
-            'purchase_type'            => 'subscription',
-            'pricing_type'             => $subscription->order?->pricing_type ?? 'subscription',
-            'pricing_option_id'        => $subscription->pricing_option_id ?? $subscription->order?->pricing_option_id,
-            'base_amount'              => $baseAmount,
-            'coupon_discount_amount'   => 0,
-            'final_amount'             => $finalAmount,
-            'status'                   => 'completed',
-            'payment_status'           => 'paid',
-            'stripe_checkout_id'       => null,
+            'patient_id' => $subscription->patient_id,
+            'product_id' => $subscription->product_id,
+            'price' => $finalAmount,
+            'currency' => strtoupper($invoice->currency ?? 'USD'),
+            'subscription_id' => $subscription->id,
+            'billing_cycle_number' => $nextCycle,
+            'purchase_type' => 'subscription',
+            'pricing_type' => $subscription->order?->pricing_type ?? 'subscription',
+            'pricing_option_id' => $subscription->pricing_option_id ?? $subscription->order?->pricing_option_id,
+            'base_amount' => $baseAmount,
+            'coupon_discount_amount' => 0,
+            'final_amount' => $finalAmount,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'stripe_checkout_id' => null,
             'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
-            'stripe_invoice_id'        => $invoice->id,
+            'stripe_invoice_id' => $invoice->id,
         ]);
 
         Payment::create([
-            'order_id'                 => $order->id,
+            'order_id' => $order->id,
             'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
-            'amount'                   => $order->price,
-            'currency'                 => $order->currency,
-            'status'                   => 'paid',
-            'failure_reason'           => null,
+            'amount' => $order->price,
+            'currency' => $order->currency,
+            'status' => 'paid',
+            'failure_reason' => null,
         ]);
 
         // Advance the cycle counter and next billing date.
         $subscription->update([
             'current_cycle_number' => $nextCycle,
-            'next_billing_date'    => Carbon::parse($subscription->next_billing_date ?? now())
+            'next_billing_date' => Carbon::parse($subscription->next_billing_date ?? now())
                 ->addMonths($subscription->billing_frequency_months)
                 ->toDateString(),
         ]);
@@ -327,10 +335,12 @@ class StripeWebhookService
         $webhookEvent->save();
 
         Log::info('Renewal order created from invoice.payment_succeeded', [
-            'order_id'        => $order->id,
-            'cycle'           => $nextCycle,
+            'order_id' => $order->id,
+            'cycle' => $nextCycle,
             'subscription_id' => $subscription->id,
         ]);
+
+        $this->dispatchDrNetworkStart($order);
 
         // -----------------------------------------------------------------------
         // Auto-cancel if the subscription has reached its total cycle limit
@@ -359,6 +369,7 @@ class StripeWebhookService
             Log::warning('invoice.payment_failed: no matching local subscription', [
                 'stripe_subscription_id' => $invoice->subscription,
             ]);
+
             return;
         }
 
@@ -371,12 +382,12 @@ class StripeWebhookService
             $latestOrder->update(['payment_status' => 'failed']);
 
             Payment::create([
-                'order_id'                 => $latestOrder->id,
+                'order_id' => $latestOrder->id,
                 'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
-                'amount'                   => round(((float) ($invoice->amount_due ?? 0)) / 100, 2),
-                'currency'                 => strtoupper($invoice->currency ?? 'USD'),
-                'status'                   => 'failed',
-                'failure_reason'           => $invoice->last_finalization_error?->message ?? 'Invoice payment failed',
+                'amount' => round(((float) ($invoice->amount_due ?? 0)) / 100, 2),
+                'currency' => strtoupper($invoice->currency ?? 'USD'),
+                'status' => 'failed',
+                'failure_reason' => $invoice->last_finalization_error?->message ?? 'Invoice payment failed',
             ]);
         }
 
@@ -403,7 +414,7 @@ class StripeWebhookService
         // Preserve "completed" status if the subscription finished naturally.
         if ($subscription->status !== 'completed') {
             $subscription->update([
-                'status'   => 'cancelled',
+                'status' => 'cancelled',
                 'end_date' => today(),
             ]);
         }
@@ -425,15 +436,15 @@ class StripeWebhookService
         }
 
         $mappedStatus = match ($stripeSubscription->status) {
-            'active'             => 'active',
-            'paused'             => 'paused',
-            'past_due'           => 'past_due',
-            'unpaid'             => 'unpaid',
-            'canceled'           => 'cancelled',
-            'incomplete'         => 'incomplete',
+            'active' => 'active',
+            'paused' => 'paused',
+            'past_due' => 'past_due',
+            'unpaid' => 'unpaid',
+            'canceled' => 'cancelled',
+            'incomplete' => 'incomplete',
             'incomplete_expired' => 'incomplete_expired',
-            'trialing'           => 'trialing',
-            default              => $subscription->status, // preserve unknown statuses
+            'trialing' => 'trialing',
+            default => $subscription->status, // preserve unknown statuses
         };
 
         $updates = ['status' => $mappedStatus];
@@ -488,8 +499,9 @@ class StripeWebhookService
         if (! $order) {
             Log::info('payment_intent.succeeded: no matching order found (possibly handled elsewhere)', [
                 'payment_intent_id' => $paymentIntent->id,
-                'metadata' => $paymentIntent->metadata ?? new \stdClass(),
+                'metadata' => $paymentIntent->metadata ?? new \stdClass,
             ]);
+
             return;
         }
 
@@ -497,22 +509,24 @@ class StripeWebhookService
             if ($order->payment_status !== 'paid') {
                 $order->update([
                     'payment_status' => 'paid',
-                    'status'         => 'completed',
+                    'status' => 'completed',
                 ]);
             }
 
             $payment = Payment::create([
-                'order_id'                 => $order->id,
+                'order_id' => $order->id,
                 'stripe_payment_intent_id' => $paymentIntent->id,
-                'amount'                   => round(((float) ($paymentIntent->amount_received ?? 0)) / 100, 2),
-                'currency'                 => strtoupper($paymentIntent->currency ?? 'USD'),
-                'status'                   => 'paid',
-                'failure_reason'           => null,
+                'amount' => round(((float) ($paymentIntent->amount_received ?? 0)) / 100, 2),
+                'currency' => strtoupper($paymentIntent->currency ?? 'USD'),
+                'status' => 'paid',
+                'failure_reason' => null,
             ]);
         }
 
         $webhookEvent->webhookable()->associate($payment);
         $webhookEvent->save();
+
+        $this->dispatchDrNetworkStart($order);
     }
 
     protected function handlePaymentIntentFailed(object $paymentIntent, StripeWebhookEvent $webhookEvent): void
@@ -531,8 +545,9 @@ class StripeWebhookService
         if (! $order) {
             Log::warning('payment_intent.payment_failed: order not found', [
                 'payment_intent_id' => $paymentIntent->id,
-                'metadata' => $paymentIntent->metadata ?? new \stdClass(),
+                'metadata' => $paymentIntent->metadata ?? new \stdClass,
             ]);
+
             return;
         }
 
@@ -573,18 +588,18 @@ class StripeWebhookService
                 StripeSubscriptionApi::cancel($subscription->stripe_subscription_id, []);
                 Log::info('Stripe subscription auto-cancelled after reaching total cycles', [
                     'stripe_subscription_id' => $subscription->stripe_subscription_id,
-                    'total_cycles'           => $subscription->total_cycles,
+                    'total_cycles' => $subscription->total_cycles,
                 ]);
             } catch (\Throwable $e) {
                 Log::warning('Failed to cancel Stripe subscription after cycle limit', [
                     'stripe_subscription_id' => $subscription->stripe_subscription_id,
-                    'error'                  => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
 
         $subscription->update([
-            'status'   => 'completed',
+            'status' => 'completed',
             'end_date' => today(),
         ]);
     }
@@ -642,6 +657,7 @@ class StripeWebhookService
 
         return round((float) ($option?->discount_percent ?? 0), 2);
     }
+
     protected function normalizeMetadata(mixed $metadata): array
     {
         if (is_array($metadata)) {
@@ -688,5 +704,10 @@ class StripeWebhookService
         }
 
         return round((float) $value, 2);
+    }
+
+    protected function dispatchDrNetworkStart(Order $order): void
+    {
+        StartDrNetworkFlowForPaidOrderJob::dispatch($order->id)->afterCommit();
     }
 }

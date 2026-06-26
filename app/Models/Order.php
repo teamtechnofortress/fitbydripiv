@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\PricingOption;
-use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +15,7 @@ class Order extends Model
     use HasFactory;
 
     public const PRICING_TYPE_ONE_TIME = 'one_time';
+
     public const PRICING_TYPE_SUBSCRIPTION = 'subscription';
 
     public const PRICING_TYPES = [
@@ -104,6 +103,21 @@ class Order extends Model
     public function flowRun(): HasOne
     {
         return $this->hasOne(DrNetworkFlowRun::class, 'order_id');
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(OrderDocument::class, 'order_id');
+    }
+
+    public function intakeAnswers(): HasMany
+    {
+        return $this->hasMany(OrderIntakeAnswer::class, 'order_id');
+    }
+
+    public function consultationRecord(): HasOne
+    {
+        return $this->hasOne(ConsultationRecord::class, 'order_id');
     }
 
     public function pricingOption(): BelongsTo

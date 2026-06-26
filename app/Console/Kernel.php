@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\DrNetwork\PollConsultationStatusJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -14,10 +15,11 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('app:dispatch-text-campaigns')->everyMinute();
         $schedule->command('app:dispatch-email-campaigns')->everyMinute();
+        $schedule->job(new PollConsultationStatusJob)->everyFifteenMinutes();
         // $schedule->command('app:chart-history-report')->dailyAt('08:00');
         // $schedule->command('app:customer-service-report')->dailyAt('08:00');
         // $schedule->command('app:patient-metrics-notify')->dailyAt('08:00');
-        // $schedule->command('app:product-metrics-notify')->dailyAt('08:00');        
+        // $schedule->command('app:product-metrics-notify')->dailyAt('08:00');
         // $schedule->command('app:appointment-report-notify')->dailyAt('08:00');
         // $schedule->command('app:reward-report-notify')->dailyAt('08:00');
         // $schedule->command('app:email-text-report')->dailyAt('08:00');

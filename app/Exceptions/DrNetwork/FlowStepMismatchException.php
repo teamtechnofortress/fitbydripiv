@@ -4,6 +4,4 @@ namespace App\Exceptions\DrNetwork;
 
 use Exception;
 
-class FlowStepMismatchException extends Exception
-{
-}
+class FlowStepMismatchException extends Exception {}

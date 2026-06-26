@@ -4,6 +4,4 @@ namespace App\Exceptions\DrNetwork;
 
 use Exception;
 
-class NetworkAssignmentException extends Exception
-{
-}
+class NetworkAssignmentException extends Exception {}

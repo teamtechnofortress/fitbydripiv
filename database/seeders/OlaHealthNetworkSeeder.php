@@ -3,11 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\DrNetwork;
+use App\Models\DrNetworkConfigValue;
 use App\Models\NetworkFlowDefinition;
 use App\Models\NetworkStateMapping;
 use App\Models\State;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class OlaHealthNetworkSeeder extends Seeder
 {
@@ -55,6 +57,8 @@ class OlaHealthNetworkSeeder extends Seeder
                 'config_version' => 1,
             ]
         );
+
+        $this->seedConfigValues($olaHealth);
 
         $asyncFlow = NetworkFlowDefinition::query()->updateOrCreate(
             ['flow_key' => 'async_review'],
@@ -172,5 +176,82 @@ class OlaHealthNetworkSeeder extends Seeder
             'video_states_count' => count(self::VIDEO_STATE_CODES),
             'async_states_count' => max(0, $states->count() - count(self::VIDEO_STATE_CODES)),
         ]);
+    }
+
+    private function seedConfigValues(DrNetwork $network): void
+    {
+        $network->loadMissing('configValues');
+        $webhookEndpointToken = $this->webhookEndpointToken($network);
+
+        $configValues = [
+            'auth_token' => [
+                'value' => env('OLA_HEALTH_AUTH_TOKEN', 'dummy'),
+                'value_type' => DrNetworkConfigValue::TYPE_STRING,
+                'is_secret' => true,
+                'display_name' => 'Auth Token',
+            ],
+            'secret_token' => [
+                'value' => env('OLA_HEALTH_SECRET_TOKEN', 'ddummy'),
+                'value_type' => DrNetworkConfigValue::TYPE_STRING,
+                'is_secret' => true,
+                'display_name' => 'Secret Token',
+            ],
+            'service_key' => [
+                'value' => env('OLA_HEALTH_SERVICE_KEY', 'fitbyshot-semaglutide-injection'),
+                'value_type' => DrNetworkConfigValue::TYPE_STRING,
+                'is_secret' => false,
+                'display_name' => 'Service Key',
+            ],
+            'service_id' => [
+                'value' => env('OLA_HEALTH_SERVICE_ID', '123'),
+                'value_type' => DrNetworkConfigValue::TYPE_INTEGER,
+                'is_secret' => false,
+                'display_name' => 'Service ID',
+            ],
+            'session_type' => [
+                'value' => env('OLA_HEALTH_SESSION_TYPE', 'initial'),
+                'value_type' => DrNetworkConfigValue::TYPE_STRING,
+                'is_secret' => false,
+                'display_name' => 'Session Type',
+            ],
+            'webhook_enabled' => [
+                'value' => true,
+                'value_type' => DrNetworkConfigValue::TYPE_BOOLEAN,
+                'is_secret' => false,
+                'display_name' => 'Webhook Enabled',
+            ],
+            'webhook_endpoint_token' => [
+                'value' => $webhookEndpointToken,
+                'lookup_hash' => DrNetworkConfigValue::lookupHash($webhookEndpointToken),
+                'value_type' => DrNetworkConfigValue::TYPE_STRING,
+                'is_secret' => true,
+                'display_name' => 'Webhook Endpoint Token',
+                'description' => 'Opaque token used in the generic Dr Network webhook URL.',
+            ],
+            'webhook_signatures_enabled' => [
+                'value' => false,
+                'value_type' => DrNetworkConfigValue::TYPE_BOOLEAN,
+                'is_secret' => false,
+                'display_name' => 'Webhook Signatures Enabled',
+                'description' => 'Ola Health currently has no confirmed webhook signature contract.',
+            ],
+        ];
+
+        foreach ($configValues as $key => $configValue) {
+            DrNetworkConfigValue::query()->updateOrCreate(
+                [
+                    'dr_network_id' => $network->id,
+                    'key' => $key,
+                ],
+                $configValue
+            );
+        }
+    }
+
+    private function webhookEndpointToken(DrNetwork $network): string
+    {
+        return env('OLA_HEALTH_WEBHOOK_ENDPOINT_TOKEN')
+            ?: $network->configValue('webhook_endpoint_token')
+            ?: (string) Str::uuid();
     }
 }
