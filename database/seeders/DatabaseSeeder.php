@@ -13,9 +13,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            StateSeeder::class,
-            DocumentTypeSeeder::class,
-            OlaHealthSeeder::class,
             // CmsSeeder::class,
             SettingSeeder::class,
             GlobalSectionSeeder::class,
@@ -24,6 +21,7 @@ class DatabaseSeeder extends Seeder
             CategoryTemplateSeeder::class,
             GeneralFaqPageSeeder::class,
             InstructionsPageSeeder::class,
+            JurisdictionPageSeeder::class,
             PenInstructionsPageSeeder::class,
             PrivacyPageSeeder::class,
             ProductSelectionPageSeeder::class,

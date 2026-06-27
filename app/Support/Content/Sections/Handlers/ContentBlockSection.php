@@ -20,6 +20,7 @@ class ContentBlockSection
             'intro' => $content['intro'] ?? null,
             'paragraphs' => array_values($content['paragraphs'] ?? []),
             'bullets' => array_values($content['bullets'] ?? []),
+            'grid_bullets' => array_values($content['grid_bullets'] ?? []),
             'rows' => array_values($content['rows'] ?? []),
             'alignment' => $content['alignment'] ?? 'left',
             'max_width' => $content['max_width'] ?? 'content',

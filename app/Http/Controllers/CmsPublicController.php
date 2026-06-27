@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\enums\SectionType;
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
+use App\Models\CmsSiteSetting;
 use App\Models\Product;
 use App\Models\ProductPricing;
 use App\Support\Content\Sections\ProductSectionImage;
@@ -101,6 +102,12 @@ class CmsPublicController extends Controller
                 ],
             ],
         ]);
+    }
+
+     public function getSiteSettings(): JsonResponse
+    {
+        $settings = CmsSiteSetting::find(1);
+        return response()->json(['success' => true, 'data' => $settings]);
     }
 
 
