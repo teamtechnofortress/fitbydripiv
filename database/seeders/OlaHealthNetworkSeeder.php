@@ -27,6 +27,12 @@ class OlaHealthNetworkSeeder extends Seeder
 
     public function run(): void
     {
+        $existingOlaHealth = DrNetwork::query()
+            ->where('slug', 'ola-health')
+            ->with('configValues')
+            ->first();
+        $webhookEndpointTokenHash = $this->webhookEndpointTokenHash($existingOlaHealth);
+
         $olaHealth = DrNetwork::query()->updateOrCreate(
             ['slug' => 'ola-health'],
             [
@@ -40,16 +46,22 @@ class OlaHealthNetworkSeeder extends Seeder
                     'token_expiry_minutes' => 30,
                     'retry_attempts' => 3,
                     'retry_delay_seconds' => 5,
+                    'webhook_endpoint_token_hash' => $webhookEndpointTokenHash,
+                    'webhook_signatures_enabled' => false,
                 ],
                 'metadata' => [
                     'supports_video' => true,
                     'supports_async' => true,
                     'requires_provider_scheduling' => true,
                     'document_verification' => 'liveness_required_for_video',
+                    'journey_steps' => $this->journeySteps(),
                 ],
                 'feature_flags' => [
                     'video_consultation' => true,
                     'async_review' => true,
+                    'follow_up_async_review' => true,
+                    'checkout_step' => true,
+                    'payment_confirmation_step' => true,
                     'prescription_delivery' => false,
                     'webhook_enabled' => true,
                     'polling_enabled' => true,
@@ -80,19 +92,20 @@ class OlaHealthNetworkSeeder extends Seeder
                         'required' => true,
                         'order' => 2,
                     ],
+                    ...$this->paymentJourneySteps(3),
                     [
                         'step_key' => 'review_and_submit',
                         'name' => 'Review and Submit',
                         'description' => 'Review information and submit to provider.',
                         'required' => true,
-                        'order' => 3,
+                        'order' => 5,
                     ],
                     [
                         'step_key' => 'provider_review',
                         'name' => 'Provider Review',
                         'description' => 'Wait for provider review and decision.',
                         'required' => true,
-                        'order' => 4,
+                        'order' => 6,
                     ],
                 ],
                 'is_active' => true,
@@ -119,26 +132,59 @@ class OlaHealthNetworkSeeder extends Seeder
                         'required' => true,
                         'order' => 2,
                     ],
+                    ...$this->paymentJourneySteps(3),
                     [
                         'step_key' => 'slot_selection',
                         'name' => 'Select Appointment Time',
                         'description' => 'Choose an available provider time for video consultation.',
                         'required' => true,
-                        'order' => 3,
+                        'order' => 5,
                     ],
                     [
                         'step_key' => 'review_and_submit',
                         'name' => 'Confirm Appointment',
                         'description' => 'Confirm appointment details and submit.',
                         'required' => true,
-                        'order' => 4,
+                        'order' => 6,
                     ],
                     [
                         'step_key' => 'video_consultation',
                         'name' => 'Video Consultation',
                         'description' => 'Participate in a video call with a provider.',
                         'required' => true,
-                        'order' => 5,
+                        'order' => 7,
+                    ],
+                ],
+                'is_active' => true,
+            ]
+        );
+
+        NetworkFlowDefinition::query()->updateOrCreate(
+            ['flow_key' => 'follow_up_async_review'],
+            [
+                'name' => 'Follow-up Async Consultation Review',
+                'description' => 'Patient submits follow-up information, then provider reviews and decides asynchronously.',
+                'steps' => [
+                    [
+                        'step_key' => 'intake_questions',
+                        'name' => 'Answer Follow-up Questions',
+                        'description' => 'Provide current symptoms, progress, medication response, and changes since the prior consultation.',
+                        'required' => true,
+                        'order' => 1,
+                    ],
+                    [
+                        'step_key' => 'review_and_submit',
+                        'name' => 'Review and Submit',
+                        'description' => 'Review follow-up information and submit to provider.',
+                        'required' => true,
+                        'order' => 2,
+                    ],
+                    [
+                        'step_key' => 'provider_review',
+                        'name' => 'Provider Review',
+                        'description' => 'Wait for provider review and decision.',
+                        'required' => true,
+                        'order' => 3,
                     ],
                 ],
                 'is_active' => true,
@@ -178,11 +224,128 @@ class OlaHealthNetworkSeeder extends Seeder
         ]);
     }
 
+    private function journeySteps(): array
+    {
+        return [
+            [
+                'step_key' => 'checkout',
+                'phase' => 'payment',
+                'name' => 'Checkout',
+                'description' => 'Customer starts Stripe checkout for the selected order.',
+                'required' => true,
+                'system_managed' => false,
+                'order' => 1,
+            ],
+            [
+                'step_key' => 'awaiting_payment_confirmation',
+                'phase' => 'payment',
+                'name' => 'Awaiting Payment Confirmation',
+                'description' => 'System waits for Stripe webhook confirmation after checkout.',
+                'required' => true,
+                'system_managed' => true,
+                'order' => 2,
+            ],
+            [
+                'step_key' => 'dr_network_initializing',
+                'phase' => 'dr_network_initialization',
+                'name' => 'Preparing Consultation Journey',
+                'description' => 'System starts the assigned Ola Health workflow after payment is confirmed.',
+                'required' => true,
+                'system_managed' => true,
+                'order' => 3,
+            ],
+            [
+                'step_key' => 'document_upload',
+                'phase' => 'dr_network',
+                'name' => 'Upload Documents',
+                'description' => 'Upload required identity or clinical documents.',
+                'required' => true,
+                'system_managed' => false,
+                'order' => 4,
+            ],
+            [
+                'step_key' => 'intake_questions',
+                'phase' => 'dr_network',
+                'name' => 'Answer Medical Questions',
+                'description' => 'Answer the Ola Health medical intake questions for the selected flow.',
+                'required' => true,
+                'system_managed' => false,
+                'order' => 5,
+            ],
+            [
+                'step_key' => 'slot_selection',
+                'phase' => 'dr_network',
+                'name' => 'Select Appointment Time',
+                'description' => 'Select a provider slot when the selected Ola Health flow requires scheduling.',
+                'required' => false,
+                'system_managed' => false,
+                'order' => 6,
+            ],
+            [
+                'step_key' => 'review_and_submit',
+                'phase' => 'dr_network',
+                'name' => 'Review and Submit',
+                'description' => 'Review consultation details and submit the case to Ola Health.',
+                'required' => true,
+                'system_managed' => false,
+                'order' => 7,
+            ],
+            [
+                'step_key' => 'awaiting_review',
+                'phase' => 'dr_network',
+                'name' => 'Awaiting Provider Review',
+                'description' => 'System waits while the provider reviews the submitted case.',
+                'required' => true,
+                'system_managed' => true,
+                'order' => 8,
+            ],
+            [
+                'step_key' => 'completed',
+                'phase' => 'completed',
+                'name' => 'Completed',
+                'description' => 'The consultation journey is complete.',
+                'required' => false,
+                'system_managed' => true,
+                'order' => 9,
+            ],
+            [
+                'step_key' => 'failed',
+                'phase' => 'failed',
+                'name' => 'Failed',
+                'description' => 'The journey could not be completed and requires support.',
+                'required' => false,
+                'system_managed' => true,
+                'order' => 10,
+            ],
+        ];
+    }
+
+    private function paymentJourneySteps(int $startOrder): array
+    {
+        return [
+            [
+                'step_key' => 'checkout',
+                'phase' => 'payment',
+                'name' => 'Checkout',
+                'description' => 'Customer starts Stripe checkout for the selected order.',
+                'required' => true,
+                'system_managed' => false,
+                'order' => $startOrder,
+            ],
+            [
+                'step_key' => 'awaiting_payment_confirmation',
+                'phase' => 'payment',
+                'name' => 'Awaiting Payment Confirmation',
+                'description' => 'System waits for Stripe webhook confirmation after checkout.',
+                'required' => true,
+                'system_managed' => true,
+                'order' => $startOrder + 1,
+            ],
+        ];
+    }
+
     private function seedConfigValues(DrNetwork $network): void
     {
-        $network->loadMissing('configValues');
-        $webhookEndpointToken = $this->webhookEndpointToken($network);
-
         $configValues = [
             'auth_token' => [
                 'value' => env('OLA_HEALTH_AUTH_TOKEN', 'dummy'),
@@ -196,46 +359,18 @@ class OlaHealthNetworkSeeder extends Seeder
                 'is_secret' => true,
                 'display_name' => 'Secret Token',
             ],
-            'service_key' => [
-                'value' => env('OLA_HEALTH_SERVICE_KEY', 'fitbyshot-semaglutide-injection'),
+            'tenant' => [
+                'value' => env('OLA_HEALTH_TENANT', ''),
                 'value_type' => DrNetworkConfigValue::TYPE_STRING,
                 'is_secret' => false,
-                'display_name' => 'Service Key',
-            ],
-            'service_id' => [
-                'value' => env('OLA_HEALTH_SERVICE_ID', '123'),
-                'value_type' => DrNetworkConfigValue::TYPE_INTEGER,
-                'is_secret' => false,
-                'display_name' => 'Service ID',
-            ],
-            'session_type' => [
-                'value' => env('OLA_HEALTH_SESSION_TYPE', 'initial'),
-                'value_type' => DrNetworkConfigValue::TYPE_STRING,
-                'is_secret' => false,
-                'display_name' => 'Session Type',
-            ],
-            'webhook_enabled' => [
-                'value' => true,
-                'value_type' => DrNetworkConfigValue::TYPE_BOOLEAN,
-                'is_secret' => false,
-                'display_name' => 'Webhook Enabled',
-            ],
-            'webhook_endpoint_token' => [
-                'value' => $webhookEndpointToken,
-                'lookup_hash' => DrNetworkConfigValue::lookupHash($webhookEndpointToken),
-                'value_type' => DrNetworkConfigValue::TYPE_STRING,
-                'is_secret' => true,
-                'display_name' => 'Webhook Endpoint Token',
-                'description' => 'Opaque token used in the generic Dr Network webhook URL.',
-            ],
-            'webhook_signatures_enabled' => [
-                'value' => false,
-                'value_type' => DrNetworkConfigValue::TYPE_BOOLEAN,
-                'is_secret' => false,
-                'display_name' => 'Webhook Signatures Enabled',
-                'description' => 'Ola Health currently has no confirmed webhook signature contract.',
+                'display_name' => 'Tenant',
             ],
         ];
+
+        DrNetworkConfigValue::query()
+            ->where('dr_network_id', $network->id)
+            ->whereNotIn('key', array_keys($configValues))
+            ->delete();
 
         foreach ($configValues as $key => $configValue) {
             DrNetworkConfigValue::query()->updateOrCreate(
@@ -248,10 +383,24 @@ class OlaHealthNetworkSeeder extends Seeder
         }
     }
 
-    private function webhookEndpointToken(DrNetwork $network): string
+    private function webhookEndpointTokenHash(?DrNetwork $network): string
     {
-        return env('OLA_HEALTH_WEBHOOK_ENDPOINT_TOKEN')
-            ?: $network->configValue('webhook_endpoint_token')
-            ?: (string) Str::uuid();
+        $envToken = env('OLA_HEALTH_WEBHOOK_ENDPOINT_TOKEN');
+
+        if (filled($envToken)) {
+            return DrNetworkConfigValue::lookupHash((string) $envToken);
+        }
+
+        $existingHash = $network?->settings['webhook_endpoint_token_hash'] ?? null;
+
+        if (filled($existingHash)) {
+            return (string) $existingHash;
+        }
+
+        $existingToken = $network?->configValue('webhook_endpoint_token');
+
+        return DrNetworkConfigValue::lookupHash(
+            filled($existingToken) ? (string) $existingToken : (string) Str::uuid()
+        );
     }
 }

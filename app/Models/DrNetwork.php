@@ -136,7 +136,13 @@ class DrNetwork extends Model
             'network_product_mappings',
             'dr_network_id',
             'product_id'
-        )->withPivot(['identifier', 'is_active'])->withTimestamps();
+        )->withPivot([
+            'flow_id',
+            'external_service_id',
+            'external_service_key',
+            'external_config',
+            'is_active',
+        ])->withTimestamps();
     }
 
     public function configurableRules(): MorphMany

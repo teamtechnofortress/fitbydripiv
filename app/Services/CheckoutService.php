@@ -5,19 +5,18 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\PricingOption;
 use App\Models\Product;
-use Carbon\Carbon;
+use App\Services\DrNetwork\Flow\FlowRunner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use Stripe\Checkout\Session as StripeCheckoutSession;
 use Stripe\Stripe;
 
 class CheckoutService
 {
     public function __construct(
-        protected PricingService $pricingService
-    ) {
-    }
+        protected PricingService $pricingService,
+        protected FlowRunner $flowRunner
+    ) {}
 
     public function createDraftOrder(array $data): array
     {
@@ -223,6 +222,8 @@ class CheckoutService
             'stripe_checkout_id' => $session->id,
         ]);
 
+        $this->advanceCheckoutStep($order->fresh(), $session->id, $session->url);
+
         Log::info('Stripe checkout session URL ready', [
             'order_id' => $order->id,
             'checkout_id' => $session->id,
@@ -235,6 +236,44 @@ class CheckoutService
             'checkout_id' => $session->id,
             'checkout_url' => $session->url,
         ];
+    }
+
+    private function advanceCheckoutStep(Order $order, string $checkoutId, ?string $checkoutUrl): void
+    {
+        $order->loadMissing('flowRun');
+        $flowRun = $order->flowRun;
+
+        if (! $flowRun) {
+            Log::channel('dr_network')->info('Checkout step advance skipped: order has no flow run.', [
+                'order_id' => $order->id,
+                'checkout_id' => $checkoutId,
+            ]);
+
+            return;
+        }
+
+        if ($flowRun->current_step_key !== 'checkout') {
+            Log::channel('dr_network')->info('Checkout step advance skipped: flow run is not on checkout.', [
+                'order_id' => $order->id,
+                'flow_run_id' => $flowRun->id,
+                'current_step_key' => $flowRun->current_step_key,
+                'checkout_id' => $checkoutId,
+            ]);
+
+            return;
+        }
+
+        $advanced = $this->flowRunner->advance($flowRun, 'checkout', [
+            'stripe_checkout_id' => $checkoutId,
+            'checkout_url' => $checkoutUrl,
+        ]);
+
+        Log::channel('dr_network')->info('Checkout step completed; moved to payment confirmation.', [
+            'order_id' => $order->id,
+            'flow_run_id' => $advanced->id,
+            'current_step_key' => $advanced->current_step_key,
+            'checkout_id' => $checkoutId,
+        ]);
     }
 
     protected function resolveCheckoutSelection(array $data): array

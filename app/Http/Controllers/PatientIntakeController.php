@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DrNetwork\NetworkAssignmentException;
 use App\Models\Order;
 use App\Models\Patient;
 use App\Models\PatientIntake;
 use App\Services\CheckoutResponseService;
+use App\Services\DrNetwork\Assignment\DrNetworkAssignmentService;
+use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
 use App\Services\IdempotencyService;
 use App\Services\StateCodeResolver;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +21,9 @@ class PatientIntakeController extends Controller
     public function __construct(
         protected IdempotencyService $idempotencyService,
         protected CheckoutResponseService $checkoutResponseService,
-        protected StateCodeResolver $stateCodeResolver
+        protected StateCodeResolver $stateCodeResolver,
+        protected DrNetworkAssignmentService $drNetworkAssignmentService,
+        protected DrNetworkOrchestrator $drNetworkOrchestrator
     ) {}
 
     public function fetchByEmail(Request $request): JsonResponse
@@ -145,7 +150,6 @@ class PatientIntakeController extends Controller
         }
 
         $medical = $request->input('medicalScreening', []);
-        $medical = $request->input('medicalScreening', []);
 
         $hasPositiveScreening = false;
         foreach ($medical as $value) {
@@ -227,111 +231,133 @@ class PatientIntakeController extends Controller
         $phone = trim((string) ($validated['phone'] ?? ''));
         $phone = $phone !== '' ? $phone : null;
 
-        $result = $this->idempotencyService->handle(
-            $request->header('Idempotency-Key'),
-            'patients.intake-form',
-            $idempotencyPayload,
-            function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
-                [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
-                    Log::info('Intake transaction started', [
-                        'order_id' => $order->id,
-                        'email' => $validated['email'],
-                    ]);
-                    // ─────────────────────────────────────────────────────────────
-                    // 1. CREATE OR UPDATE PATIENT
-                    // ─────────────────────────────────────────────────────────────
-                    $patient = Patient::firstOrNew(['email' => $validated['email']]);
-                    $patient->fill([
-                        'first_name' => $validated['firstName'],
-                        'middle_name' => $validated['middleName'] ?? null,
-                        'last_name' => $validated['lastName'],
-                        'phone' => $phone,
-                        'address' => $validated['address'],
-                        'city' => $validated['city'],
-                        'state' => $validated['state'],
-                        'zip' => $validated['zip'],
-                        'birthday' => $validated['dateOfBirth'],
-                        'age' => $validated['age'] ?? null,
-                        'gender' => $validated['gender'] ?? null,
-                        'ethnicity' => $validated['ethnicity'] ?? null,
-                    ]);
-                    $patient->save();
-
-                    // ─────────────────────────────────────────────────────────────
-                    // 2. PREPARE MEDICAL SCREENING WITH DEFAULTS
-                    // ─────────────────────────────────────────────────────────────
-                    // All medical screening questions default to "no" if not provided
-                    $processedMedical = [
-                        'diabetes' => $medical['diabetes'] ?? 'no',
-                        'blood_thinners' => $medical['bloodThinners'] ?? 'no',
-                        'alcohol' => $medical['alcohol'] ?? 'no',
-                        'glp_history' => $medical['glpHistory'] ?? 'no',
-                        'pancreatitis' => $medical['pancreatitis'] ?? 'no',
-                        'thyroid_cancer' => $medical['thyroidCancer'] ?? 'no',
-                        'renal_impairment' => $medical['renalImpairment'] ?? 'no',
-                    ];
-
-                    // ─────────────────────────────────────────────────────────────
-                    // 3. PREPARE INTAKE DATA
-                    // ─────────────────────────────────────────────────────────────
-                    $intakeData = [
-                        'patient_type' => $validated['patientType'] ?? 'new',
-                        // Medical screening with defaults
-                        'diabetes' => $processedMedical['diabetes'],
-                        'blood_thinners' => $processedMedical['blood_thinners'],
-                        'alcohol' => $processedMedical['alcohol'],
-                        'glp_history' => $processedMedical['glp_history'],
-                        'pancreatitis' => $processedMedical['pancreatitis'],
-                        'thyroid_cancer' => $processedMedical['thyroid_cancer'],
-                        'renal_impairment' => $processedMedical['renal_impairment'],
-                        // Goals (required, validated above)
-                        'goals' => $request->input('goals', []),
-                        // Other optional fields (default to empty/null if not provided)
-                        'current_conditions' => $currentConditions,
-                        'additional_conditions' => $additionalConditions,
-                        'medical_history' => $medicalHistory,
-                        'medications' => $medications,
-                        'current_conditions_notes' => $currentConditionsNotes,
-                        'allergies' => $allergies,
-                        'allergy_reactions' => $allergyReactions,
-                    ];
-
-                    // ─────────────────────────────────────────────────────────────
-                    // 4. CREATE OR UPDATE INTAKE
-                    // ─────────────────────────────────────────────────────────────
-                    $intake = $patient->latestIntake()->first();
-
-                    if ($intake) {
-                        $intake->update($intakeData);
-                    } else {
-                        $intake = $patient->intakes()->create($intakeData);
-                    }
-
-                    if ($order->patient_id !== $patient->id || $order->state_code !== $stateCode) {
-                        $order->patient_id = $patient->id;
-                        $order->state_code = $stateCode;
-                        $order->save();
-                        Log::info('Order linked to patient', [
+        try {
+            $result = $this->idempotencyService->handle(
+                $request->header('Idempotency-Key'),
+                'patients.intake-form',
+                $idempotencyPayload,
+                function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
+                    [$patient, $intake, $updatedOrder] = DB::transaction(function () use ($validated, $request, $medical, $currentConditions, $additionalConditions, $medicalHistory, $medications, $currentConditionsNotes, $allergies, $allergyReactions, $order, $phone, $stateCode) {
+                        Log::info('Intake transaction started', [
                             'order_id' => $order->id,
-                            'patient_id' => $patient->id,
-                            'state_code' => $stateCode,
+                            'email' => $validated['email'],
                         ]);
-                    }
+                        // ─────────────────────────────────────────────────────────────
+                        // 1. CREATE OR UPDATE PATIENT
+                        // ─────────────────────────────────────────────────────────────
+                        $patient = Patient::firstOrNew(['email' => $validated['email']]);
+                        $patient->fill([
+                            'first_name' => $validated['firstName'],
+                            'middle_name' => $validated['middleName'] ?? null,
+                            'last_name' => $validated['lastName'],
+                            'phone' => $phone,
+                            'address' => $validated['address'],
+                            'city' => $validated['city'],
+                            'state' => $validated['state'],
+                            'zip' => $validated['zip'],
+                            'birthday' => $validated['dateOfBirth'],
+                            'age' => $validated['age'] ?? null,
+                            'gender' => $validated['gender'] ?? null,
+                            'ethnicity' => $validated['ethnicity'] ?? null,
+                        ]);
+                        $patient->save();
 
-                    Log::info('Intake transaction completed', [
-                        'patient_id' => $patient->id,
-                        'intake_id' => $intake->id,
+                        // ─────────────────────────────────────────────────────────────
+                        // 2. PREPARE MEDICAL SCREENING WITH DEFAULTS
+                        // ─────────────────────────────────────────────────────────────
+                        // All medical screening questions default to "no" if not provided
+                        $processedMedical = [
+                            'diabetes' => $medical['diabetes'] ?? 'no',
+                            'blood_thinners' => $medical['bloodThinners'] ?? 'no',
+                            'alcohol' => $medical['alcohol'] ?? 'no',
+                            'glp_history' => $medical['glpHistory'] ?? 'no',
+                            'pancreatitis' => $medical['pancreatitis'] ?? 'no',
+                            'thyroid_cancer' => $medical['thyroidCancer'] ?? 'no',
+                            'renal_impairment' => $medical['renalImpairment'] ?? 'no',
+                        ];
+
+                        // ─────────────────────────────────────────────────────────────
+                        // 3. PREPARE INTAKE DATA
+                        // ─────────────────────────────────────────────────────────────
+                        $intakeData = [
+                            'patient_type' => $validated['patientType'] ?? 'new',
+                            // Medical screening with defaults
+                            'diabetes' => $processedMedical['diabetes'],
+                            'blood_thinners' => $processedMedical['blood_thinners'],
+                            'alcohol' => $processedMedical['alcohol'],
+                            'glp_history' => $processedMedical['glp_history'],
+                            'pancreatitis' => $processedMedical['pancreatitis'],
+                            'thyroid_cancer' => $processedMedical['thyroid_cancer'],
+                            'renal_impairment' => $processedMedical['renal_impairment'],
+                            // Goals (required, validated above)
+                            'goals' => $request->input('goals', []),
+                            // Other optional fields (default to empty/null if not provided)
+                            'current_conditions' => $currentConditions,
+                            'additional_conditions' => $additionalConditions,
+                            'medical_history' => $medicalHistory,
+                            'medications' => $medications,
+                            'current_conditions_notes' => $currentConditionsNotes,
+                            'allergies' => $allergies,
+                            'allergy_reactions' => $allergyReactions,
+                        ];
+
+                        // ─────────────────────────────────────────────────────────────
+                        // 4. CREATE OR UPDATE INTAKE
+                        // ─────────────────────────────────────────────────────────────
+                        $intake = $patient->latestIntake()->first();
+
+                        if ($intake) {
+                            $intake->update($intakeData);
+                        } else {
+                            $intake = $patient->intakes()->create($intakeData);
+                        }
+
+                        if ($order->patient_id !== $patient->id || $order->state_code !== $stateCode) {
+                            $order->patient_id = $patient->id;
+                            $order->state_code = $stateCode;
+                            $order->save();
+                            Log::info('Order linked to patient', [
+                                'order_id' => $order->id,
+                                'patient_id' => $patient->id,
+                                'state_code' => $stateCode,
+                            ]);
+                        }
+
+                        Log::info('Intake transaction completed', [
+                            'patient_id' => $patient->id,
+                            'intake_id' => $intake->id,
+                        ]);
+
+                        return [$patient, $intake, $order->fresh()];
+                    });
+
+                    $assignedOrder = $this->drNetworkAssignmentService->assignRouting($updatedOrder);
+                    $flowRun = $this->drNetworkOrchestrator->startForOrder($assignedOrder);
+
+                    Log::channel('dr_network')->info('Dr Network flow started from intake assignment.', [
+                        'order_id' => $assignedOrder->id,
+                        'flow_run_id' => $flowRun->id,
+                        'status' => $flowRun->status,
+                        'current_step_key' => $flowRun->current_step_key,
                     ]);
 
-                    return [$patient, $intake, $order->fresh()];
-                });
+                    return $this->checkoutResponseService->buildResponse(
+                        'Patient intake submitted successfully.',
+                        $assignedOrder->fresh('flowRun')
+                    );
+                }
+            );
+        } catch (NetworkAssignmentException $e) {
+            Log::channel('dr_network')->warning('Intake submission failed during Dr Network assignment.', [
+                'order_uuid' => $orderUuid,
+                'order_id' => $order->id,
+                'message' => $e->getMessage(),
+            ]);
 
-                return $this->checkoutResponseService->buildResponse(
-                    'Patient intake submitted successfully.',
-                    $updatedOrder
-                );
-            }
-        );
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
+        }
 
         Log::info('Intake submission finished', [
             'order_uuid' => $orderUuid,

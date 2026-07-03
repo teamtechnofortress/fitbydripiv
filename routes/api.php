@@ -102,6 +102,8 @@ Route::prefix('v1')->group(function () {
     Route::post('checkout/draft', [CheckoutController::class, 'createDraft'])->name('checkout.draft');
     Route::post('checkout', [CheckoutController::class, 'create'])->name('checkout.create');
     Route::post('checkout/apply-coupon', [CheckoutController::class, 'applyCoupon'])->name('checkout.apply-coupon');
+    Route::get('checkout/payment-confirmation', [CheckoutController::class, 'paymentConfirmation'])->name('checkout.payment-confirmation');
+    Route::post('checkout/payment-confirmation', [CheckoutController::class, 'paymentConfirmation'])->name('checkout.payment-confirmation.store');
     Route::get('orders/by-session/{session_id}', [CheckoutController::class, 'showBySession'])->name('orders.by-session');
     Route::post('subscriptions/{id}/cancel', [SubscriptionController::class, 'cancel'])->name('subscriptions.cancel');
 
@@ -139,7 +141,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/instruction-upload', [UploadController::class, 'instructionUpload'])->name('instructionUpload');
     Route::get('/get-instruction', [UploadController::class, 'getInstruction'])->name('getInstruction');
 
-    Route::prefix('orders/{order}')->group(function () {
+    Route::prefix('orders/{order:order_uuid}')->group(function () {
         Route::get('journey', [OrderJourneyController::class, 'show'])->name('orders.journey.show');
         Route::get('workflow/current-step', [DrNetworkFlowController::class, 'currentStep'])->name('orders.workflow.current-step');
         Route::post('dr-network/start', [DrNetworkFlowController::class, 'start'])->name('dr-network.start');
@@ -147,6 +149,7 @@ Route::prefix('v1')->group(function () {
         Route::get('dr-network/status', [DrNetworkFlowController::class, 'status'])->name('dr-network.status');
         Route::post('dr-network/submit', [DrNetworkFlowController::class, 'submit'])->name('dr-network.submit');
         Route::post('documents', [DrNetworkFlowController::class, 'uploadDocument'])->name('dr-network.documents.store');
+        Route::post('documents/complete', [DrNetworkFlowController::class, 'completeDocumentUpload'])->name('dr-network.documents.complete');
         Route::post('intake-answers', [DrNetworkFlowController::class, 'saveIntakeAnswer'])->name('dr-network.intake-answers.store');
         Route::get('provider-slots', [DrNetworkFlowController::class, 'getProviderSlots'])->name('dr-network.provider-slots.index');
         Route::post('provider-slots/{slotId}/book', [DrNetworkFlowController::class, 'bookSlot'])->name('dr-network.provider-slots.book');

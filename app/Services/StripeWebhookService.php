@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\StripeWebhookEvent;
 use App\Models\Subscription;
+use App\Services\DrNetwork\Flow\FlowRunner;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,10 @@ use Stripe\Subscription as StripeSubscriptionApi;
 
 class StripeWebhookService
 {
+    public function __construct(
+        private FlowRunner $flowRunner,
+    ) {}
+
     // ---------------------------------------------------------------------------
     // Entry point
     // ---------------------------------------------------------------------------
@@ -196,6 +201,8 @@ class StripeWebhookService
                 'order_id' => $order->id,
             ]);
         }
+
+        $this->advancePaymentConfirmationStep($order->fresh());
 
         $this->dispatchDrNetworkStart($order);
     }
@@ -526,6 +533,8 @@ class StripeWebhookService
         $webhookEvent->webhookable()->associate($payment);
         $webhookEvent->save();
 
+        $this->advancePaymentConfirmationStep($order->fresh());
+
         $this->dispatchDrNetworkStart($order);
     }
 
@@ -708,6 +717,55 @@ class StripeWebhookService
 
     protected function dispatchDrNetworkStart(Order $order): void
     {
+        Log::channel('dr_network')->info('Dispatching Dr Network flow start job for paid order.', [
+            'order_id' => $order->id,
+            'order_uuid' => $order->order_uuid,
+            'payment_status' => $order->payment_status,
+            'dr_network_id' => $order->dr_network_id,
+            'network_flow_id' => $order->network_flow_id,
+            'network_flow_key' => $order->network_flow_key,
+            'stripe_checkout_id' => $order->stripe_checkout_id,
+            'stripe_payment_intent_id' => $order->stripe_payment_intent_id,
+        ]);
+
         StartDrNetworkFlowForPaidOrderJob::dispatch($order->id)->afterCommit();
+    }
+
+    private function advancePaymentConfirmationStep(Order $order): void
+    {
+        $order->loadMissing('flowRun');
+        $flowRun = $order->flowRun;
+
+        if (! $flowRun) {
+            Log::channel('dr_network')->info('Payment confirmation step advance skipped: order has no flow run.', [
+                'order_id' => $order->id,
+                'payment_status' => $order->payment_status,
+            ]);
+
+            return;
+        }
+
+        if ($flowRun->current_step_key !== 'awaiting_payment_confirmation') {
+            Log::channel('dr_network')->info('Payment confirmation step advance skipped: flow run is not awaiting payment confirmation.', [
+                'order_id' => $order->id,
+                'flow_run_id' => $flowRun->id,
+                'current_step_key' => $flowRun->current_step_key,
+                'payment_status' => $order->payment_status,
+            ]);
+
+            return;
+        }
+
+        $advanced = $this->flowRunner->advance($flowRun, 'awaiting_payment_confirmation', [
+            'payment_status' => $order->payment_status,
+            'stripe_payment_intent_id' => $order->stripe_payment_intent_id,
+        ]);
+
+        Log::channel('dr_network')->info('Payment confirmation step completed; moved to next flow step.', [
+            'order_id' => $order->id,
+            'flow_run_id' => $advanced->id,
+            'current_step_key' => $advanced->current_step_key,
+            'payment_status' => $order->payment_status,
+        ]);
     }
 }

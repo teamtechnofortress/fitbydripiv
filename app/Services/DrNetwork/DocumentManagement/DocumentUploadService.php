@@ -48,7 +48,30 @@ class DocumentUploadService
             $order->product?->slug
         );
 
-        if ($validation['all_satisfied'] && $order->flowRun?->current_step_key === 'document_upload') {
+        return $validation;
+    }
+
+    public function completeDocumentUpload(Order $order): array
+    {
+        $order->loadMissing(['flowRun', 'product']);
+
+        if (! $order->dr_network_id || ! $order->network_flow_key) {
+            throw new RuntimeException('Order is not assigned to a doctor network flow.');
+        }
+
+        $validation = $this->validator->validate(
+            $order->id,
+            $order->dr_network_id,
+            $order->network_flow_key,
+            $order->state_code,
+            $order->product?->slug
+        );
+
+        if (! $validation['all_satisfied']) {
+            return $validation;
+        }
+
+        if ($order->flowRun?->current_step_key === 'document_upload') {
             $this->flowRunner->advance($order->flowRun, 'document_upload', [
                 'satisfied_rules' => $validation['satisfied'],
             ]);

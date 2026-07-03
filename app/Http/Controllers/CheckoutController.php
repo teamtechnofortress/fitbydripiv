@@ -10,7 +10,9 @@ use App\Services\CheckoutResponseService;
 use App\Services\CheckoutService;
 use App\Services\CouponService;
 use App\Services\IdempotencyService;
+use App\Services\OrderJourneyService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CheckoutController extends Controller
 {
@@ -18,9 +20,9 @@ class CheckoutController extends Controller
         protected CheckoutService $checkoutService,
         protected CheckoutResponseService $checkoutResponseService,
         protected CouponService $couponService,
-        protected IdempotencyService $idempotencyService
-    ) {
-    }
+        protected IdempotencyService $idempotencyService,
+        protected OrderJourneyService $orderJourneyService
+    ) {}
 
     public function create(CreateCheckoutRequest $request): JsonResponse
     {
@@ -58,9 +60,27 @@ class CheckoutController extends Controller
         );
     }
 
+    public function paymentConfirmation(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'session_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $order = $this->findOrderBySession($validated['session_id']);
+
+        if (! $order) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order not found for this checkout session.',
+            ], 404);
+        }
+
+        return response()->json($this->buildPaymentConfirmationResponse($order));
+    }
+
     public function showBySession(string $sessionId): JsonResponse
     {
-        $order = Order::with(['product.coverImage', 'pricingOption'])->where('stripe_checkout_id', $sessionId)->first();
+        $order = $this->findOrderBySession($sessionId);
 
         if (! $order) {
             return response()->json([
@@ -98,6 +118,49 @@ class CheckoutController extends Controller
                 'final_price' => $order->pricingOption->final_price,
                 'metadata' => $order->pricingOption->metadata,
             ] : null,
+            'journey' => $this->orderJourneyService->build($order),
         ]);
+    }
+
+    private function findOrderBySession(string $sessionId): ?Order
+    {
+        return Order::with([
+            'patient',
+            'product.coverImage',
+            'pricingOption',
+            'coupon',
+            'flowRun',
+        ])->where('stripe_checkout_id', $sessionId)->first();
+    }
+
+    private function buildPaymentConfirmationResponse(Order $order): array
+    {
+        $journey = $this->orderJourneyService->build($order);
+        $context = $this->checkoutResponseService->buildOrderContext($order);
+
+        return [
+            'success' => true,
+            'message' => $this->paymentConfirmationMessage($order->payment_status),
+            'journey_ready' => (bool) ($journey['is_ready'] ?? false),
+            'data' => array_merge($context, [
+                'payment' => [
+                    'status' => $order->payment_status,
+                    'confirmed' => $order->payment_status === 'paid',
+                    'failed' => $order->payment_status === 'failed',
+                    'pending' => $order->payment_status !== 'paid' && $order->payment_status !== 'failed',
+                    'poll_after_seconds' => $journey['retry_after_seconds'] ?? null,
+                ],
+                'journey' => $journey,
+            ]),
+        ];
+    }
+
+    private function paymentConfirmationMessage(?string $paymentStatus): string
+    {
+        return match ($paymentStatus) {
+            'paid' => 'Payment confirmed.',
+            'failed' => 'Payment failed.',
+            default => 'Payment confirmation is pending.',
+        };
     }
 }

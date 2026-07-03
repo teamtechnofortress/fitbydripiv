@@ -15,7 +15,13 @@ class BookSlotRequest extends FormRequest
     {
         return [
             'provider_id' => ['nullable', 'string', 'max:150'],
+            'provider_guid' => ['nullable', 'string', 'max:150'],
             'scheduled_time' => ['nullable', 'date'],
+            'schedule_start_date' => ['nullable', 'date'],
+            'schedule_end_date' => ['nullable', 'date'],
+            'start_datetime' => ['nullable', 'date'],
+            'end_datetime' => ['nullable', 'date'],
+            'appt_length' => ['nullable', 'integer', 'min:1', 'max:240'],
             'timezone' => ['nullable', 'string', 'max:100'],
             'slot_schedule_id' => ['nullable', 'string', 'max:150'],
         ];

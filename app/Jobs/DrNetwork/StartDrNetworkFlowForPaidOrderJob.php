@@ -35,26 +35,32 @@ class StartDrNetworkFlowForPaidOrderJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(DrNetworkOrchestrator $orchestrator): void
     {
+        Log::channel('dr_network')->info('Dr Network start job picked up.', [
+            'order_id' => $this->orderId,
+        ]);
+
         $order = Order::query()
             ->with('patient')
             ->find($this->orderId);
 
         if (! $order) {
-            Log::warning('Skipping Dr Network start: order no longer exists.', [
+            Log::channel('dr_network')->warning('Skipping Dr Network start: order no longer exists.', [
                 'order_id' => $this->orderId,
             ]);
 
             return;
         }
 
-        if ($order->payment_status !== 'paid') {
-            Log::info('Skipping Dr Network start: order is not paid.', [
-                'order_id' => $order->id,
-                'payment_status' => $order->payment_status,
-            ]);
-
-            return;
-        }
+        Log::channel('dr_network')->info('Dr Network start job loaded order.', [
+            'order_id' => $order->id,
+            'order_uuid' => $order->order_uuid,
+            'payment_status' => $order->payment_status,
+            'dr_network_id' => $order->dr_network_id,
+            'network_flow_id' => $order->network_flow_id,
+            'network_flow_key' => $order->network_flow_key,
+            'patient_id' => $order->patient_id,
+            'product_id' => $order->product_id,
+        ]);
 
         try {
             $flowRun = $orchestrator->startForOrder($order);

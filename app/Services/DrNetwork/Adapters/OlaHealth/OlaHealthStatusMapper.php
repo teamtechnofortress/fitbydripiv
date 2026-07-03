@@ -15,8 +15,8 @@ class OlaHealthStatusMapper
     public static function toInternal(string $olaStatus): string
     {
         return match (strtolower(trim($olaStatus))) {
-            'approved', 'prescription_issued', 'completed', 'closed' => self::INTERNAL_PRESCRIPTION_APPROVED,
-            'rejected', 'declined', 'not_eligible', 'cancelled' => self::INTERNAL_CONSULTATION_REJECTED,
+            'accept', 'accepted', 'approved', 'prescription_issued', 'completed', 'closed' => self::INTERNAL_PRESCRIPTION_APPROVED,
+            'reject', 'rejected', 'declined', 'not_eligible', 'cancelled' => self::INTERNAL_CONSULTATION_REJECTED,
             'pending_info', 'info_needed', 'on_hold', 'needs_review' => self::INTERNAL_PENDING_PATIENT_INFO,
             default => self::INTERNAL_IN_REVIEW,
         };

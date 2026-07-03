@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\DrNetwork;
+use App\Models\NetworkFlowDefinition;
 use App\Models\NetworkProductMapping;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
@@ -20,13 +21,22 @@ class OlaHealthProductMappingSeeder extends Seeder
             return;
         }
 
-        $mappings = [
-            'semaglutide' => 'weight-loss-semaglutide-injection-advanta-rx',
-        ];
+        $flows = NetworkFlowDefinition::query()
+            ->whereIn('flow_key', ['async_review', 'video_consultation', 'follow_up_async_review'])
+            ->get()
+            ->keyBy('flow_key');
+
+        NetworkProductMapping::query()
+            ->where('dr_network_id', $olaHealth->id)
+            ->whereNull('flow_id')
+            ->delete();
+
+        $mappings = $this->mappings();
 
         $seededCount = 0;
 
-        foreach ($mappings as $productSlug => $identifier) {
+        foreach ($mappings as $mapping) {
+            $productSlug = $mapping['product_slug'];
             $product = Product::where('slug', $productSlug)->first();
 
             if (! $product) {
@@ -35,13 +45,24 @@ class OlaHealthProductMappingSeeder extends Seeder
                 continue;
             }
 
+            $flow = $flows->get($mapping['flow_key']);
+
+            if (! $flow) {
+                $this->command?->warn("Flow with key [{$mapping['flow_key']}] not found. Skipping.");
+
+                continue;
+            }
+
             NetworkProductMapping::updateOrCreate(
                 [
                     'dr_network_id' => $olaHealth->id,
                     'product_id' => $product->id,
+                    'flow_id' => $flow->id,
                 ],
                 [
-                    'identifier' => $identifier,
+                    'external_service_id' => $mapping['external_service_id'],
+                    'external_service_key' => $mapping['external_service_key'],
+                    'external_config' => $mapping['external_config'],
                     'is_active' => true,
                 ]
             );
@@ -50,5 +71,98 @@ class OlaHealthProductMappingSeeder extends Seeder
         }
 
         Log::info('Ola Health product mappings seeded', ['count' => $seededCount]);
+    }
+
+    private function mappings(): array
+    {
+        $initialMappings = [
+            [
+                'product_slug' => 'b12-injection',
+                'service_name' => 'B-Complex',
+                'service_key' => 'fitbyshot-bcomplex',
+                'service_id' => '1780',
+            ],
+            [
+                'product_slug' => 'glutathione',
+                'service_name' => 'Glutathione',
+                'service_key' => 'fitbyshot-glutathione',
+                'service_id' => '1778',
+            ],
+            [
+                'product_slug' => 'nad-therapy',
+                'service_name' => 'NAD+',
+                'service_key' => 'fitbyshot-nad',
+                'service_id' => '1777',
+            ],
+            [
+                'product_slug' => 'tirzepatide',
+                'service_name' => 'Tirzepatide Injection',
+                'service_key' => 'fitbyshot-tirzepatide-injection',
+                'service_id' => '1775',
+            ],
+            [
+                'product_slug' => 'semaglutide',
+                'service_name' => 'Semaglutide Injection',
+                'service_key' => 'fitbyshot-semaglutide-injection',
+                'service_id' => '1659',
+            ],
+        ];
+
+        return collect($initialMappings)
+            ->flatMap(fn (array $mapping): array => $this->initialFlowMappings($mapping))
+            ->merge([
+                $this->mapping(
+                    'tirzepatide',
+                    'follow_up_async_review',
+                    '1776',
+                    'fitbyshot-tirzepatide-injection',
+                    'follow-up-async',
+                    'Tirzepatide Injection - Follow Up'
+                ),
+                $this->mapping(
+                    'semaglutide',
+                    'follow_up_async_review',
+                    '1782',
+                    'fitbyshot-semaglutide-injection',
+                    'follow-up-async',
+                    'Semaglutide Injection - Follow Up'
+                ),
+            ])
+            ->all();
+    }
+
+    private function initialFlowMappings(array $mapping): array
+    {
+        return array_map(
+            fn (string $flowKey): array => $this->mapping(
+                $mapping['product_slug'],
+                $flowKey,
+                $mapping['service_id'],
+                $mapping['service_key'],
+                'initial',
+                $mapping['service_name']
+            ),
+            ['async_review', 'video_consultation']
+        );
+    }
+
+    private function mapping(
+        string $productSlug,
+        string $flowKey,
+        string $serviceId,
+        string $serviceKey,
+        string $sessionType,
+        string $serviceName
+    ): array {
+        return [
+            'product_slug' => $productSlug,
+            'flow_key' => $flowKey,
+            'external_service_id' => $serviceId,
+            'external_service_key' => $serviceKey,
+            'external_config' => [
+                'service_name' => $serviceName,
+                'session_type' => $sessionType,
+            ],
+        ];
     }
 }

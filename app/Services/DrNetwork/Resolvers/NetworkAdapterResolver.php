@@ -26,6 +26,10 @@ class NetworkAdapterResolver
             ));
         }
 
+        if (method_exists($adapter, 'configureForNetwork')) {
+            $adapter->configureForNetwork($network);
+        }
+
         return $adapter;
     }
 }

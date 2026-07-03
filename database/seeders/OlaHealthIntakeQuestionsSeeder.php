@@ -16,6 +16,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
         $olaHealth = DrNetwork::query()->where('slug', 'ola-health')->firstOrFail();
         $asyncFlow = NetworkFlowDefinition::query()->where('flow_key', 'async_review')->firstOrFail();
         $videoFlow = NetworkFlowDefinition::query()->where('flow_key', 'video_consultation')->firstOrFail();
+        $followUpFlow = NetworkFlowDefinition::query()->where('flow_key', 'follow_up_async_review')->firstOrFail();
 
         $asyncQuestionSet = NetworkIntakeQuestionSet::query()->updateOrCreate(
             [
@@ -55,8 +56,28 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             ]
         );
 
+        $followUpQuestionSet = NetworkIntakeQuestionSet::query()->updateOrCreate(
+            [
+                'dr_network_id' => $olaHealth->id,
+                'flow_id' => $followUpFlow->id,
+                'product_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
+                'state_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
+                'version' => 1,
+            ],
+            [
+                'set_key' => 'ola_follow_up_async_general',
+                'set_name' => 'Ola Health - Follow-up Async Consultation Questions',
+                'status' => NetworkIntakeQuestionSet::STATUS_PUBLISHED,
+                'metadata' => [
+                    'network' => 'ola_health',
+                    'flow_key' => 'follow_up_async_review',
+                ],
+            ]
+        );
+
         $this->syncQuestions($asyncQuestionSet, includeInsuranceQuestion: false);
         $this->syncQuestions($videoQuestionSet, includeInsuranceQuestion: true);
+        $this->syncQuestions($followUpQuestionSet, includeInsuranceQuestion: false);
 
         Log::info('Ola Health intake questions seeded successfully');
     }

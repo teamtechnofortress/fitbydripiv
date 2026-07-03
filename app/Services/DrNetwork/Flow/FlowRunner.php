@@ -6,6 +6,7 @@ use App\Exceptions\DrNetwork\FlowStepMismatchException;
 use App\Models\DrNetworkFlowRun;
 use App\Models\DrNetworkFlowRunStep;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FlowRunner
 {
@@ -14,16 +15,46 @@ class FlowRunner
         return DB::transaction(function () use ($flowRun): DrNetworkFlowRun {
             $flowRun->loadMissing('flowDefinition');
 
+            Log::channel('dr_network')->info('FlowRunner start requested.', [
+                'flow_run_id' => $flowRun->id,
+                'order_id' => $flowRun->order_id,
+                'dr_network_id' => $flowRun->dr_network_id,
+                'flow_id' => $flowRun->flow_id,
+                'flow_key' => $flowRun->flowDefinition?->flow_key,
+                'status' => $flowRun->status,
+                'current_step_key' => $flowRun->current_step_key,
+            ]);
+
             $firstStep = FlowStepSequence::first($flowRun->flowDefinition->steps ?? []);
 
             if (! $firstStep) {
+                Log::channel('dr_network')->warning('FlowRunner found no runtime steps; completing flow run.', [
+                    'flow_run_id' => $flowRun->id,
+                    'order_id' => $flowRun->order_id,
+                    'flow_id' => $flowRun->flow_id,
+                    'flow_key' => $flowRun->flowDefinition?->flow_key,
+                ]);
+
                 return $this->complete($flowRun, ['completed_reason' => 'no_steps']);
             }
+
+            Log::channel('dr_network')->info('FlowRunner resolved first runtime step.', [
+                'flow_run_id' => $flowRun->id,
+                'order_id' => $flowRun->order_id,
+                'first_step_key' => $firstStep['step_key'],
+                'first_step_order' => $firstStep['order'] ?? null,
+            ]);
 
             $flowRun->update([
                 'status' => DrNetworkFlowRun::STATUS_RUNNING,
                 'current_step_key' => $firstStep['step_key'],
                 'started_at' => $flowRun->started_at ?? now(),
+            ]);
+
+            Log::channel('dr_network')->info('FlowRunner marked flow run as running.', [
+                'flow_run_id' => $flowRun->id,
+                'order_id' => $flowRun->order_id,
+                'current_step_key' => $firstStep['step_key'],
             ]);
 
             $this->openStep($flowRun, $firstStep['step_key']);
@@ -94,7 +125,7 @@ class FlowRunner
                 $flowRun,
                 $flowRun->current_step_key,
                 DrNetworkFlowRunStep::STATUS_FAILED,
-                [],
+                $context,
                 $reason
             );
 
@@ -131,11 +162,19 @@ class FlowRunner
 
     private function openStep(DrNetworkFlowRun $flowRun, string $stepKey): void
     {
-        DrNetworkFlowRunStep::query()->create([
+        $step = DrNetworkFlowRunStep::query()->create([
             'flow_run_id' => $flowRun->id,
             'step_key' => $stepKey,
             'status' => DrNetworkFlowRunStep::STATUS_IN_PROGRESS,
             'started_at' => now(),
+        ]);
+
+        Log::channel('dr_network')->info('FlowRunner opened flow run step.', [
+            'flow_run_id' => $flowRun->id,
+            'flow_run_step_id' => $step->id,
+            'order_id' => $flowRun->order_id,
+            'step_key' => $stepKey,
+            'status' => $step->status,
         ]);
     }
 

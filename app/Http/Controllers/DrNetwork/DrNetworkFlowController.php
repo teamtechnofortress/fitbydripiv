@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\DrNetwork\BookSlotRequest;
 use App\Http\Requests\DrNetwork\SaveIntakeAnswerRequest;
 use App\Http\Requests\DrNetwork\UploadDocumentRequest;
+use App\Models\DrNetworkFlowRun;
 use App\Models\Order;
 use App\Services\DrNetwork\ConsultationManagement\ConsultationSubmissionService;
 use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
@@ -56,6 +57,14 @@ class DrNetworkFlowController extends Controller
 
         if (! $flowRun) {
             return response()->json(['message' => 'Flow not started.'], 404);
+        }
+
+        if ($flowRun->status === DrNetworkFlowRun::STATUS_FAILED) {
+            return response()->json([
+                'step' => 'failed',
+                'status' => DrNetworkFlowRun::STATUS_FAILED,
+                'failed_step_key' => $flowRun->current_step_key,
+            ]);
         }
 
         $payload = [
@@ -108,9 +117,40 @@ class DrNetworkFlowController extends Controller
 
         return response()->json([
             'all_satisfied' => $result['all_satisfied'],
+            'can_continue' => $result['all_satisfied'],
             'satisfied' => $result['satisfied'],
             'unsatisfied' => $result['unsatisfied'],
             'current_step_key' => $flowRun?->current_step_key,
+        ]);
+    }
+
+    public function completeDocumentUpload(Order $order): JsonResponse
+    {
+        $this->authorizeOrder($order);
+
+        $result = $this->documentUploadService->completeDocumentUpload($order);
+
+        if (! $result['all_satisfied']) {
+            return response()->json([
+                'message' => 'Required documents are not complete.',
+                'all_satisfied' => false,
+                'can_continue' => false,
+                'satisfied' => $result['satisfied'],
+                'unsatisfied' => $result['unsatisfied'],
+                'current_step_key' => $order->flowRun?->current_step_key,
+            ], 422);
+        }
+
+        $flowRun = $order->flowRun?->fresh();
+
+        return response()->json([
+            'message' => 'Document requirements completed.',
+            'all_satisfied' => true,
+            'can_continue' => true,
+            'satisfied' => $result['satisfied'],
+            'unsatisfied' => $result['unsatisfied'],
+            'current_step_key' => $flowRun?->current_step_key,
+            'status' => $flowRun?->status,
         ]);
     }
 
@@ -191,8 +231,5 @@ class DrNetworkFlowController extends Controller
         ]);
     }
 
-    private function authorizeOrder(Order $order): void
-    {
-        return;
-    }
+    private function authorizeOrder(Order $order): void {}
 }

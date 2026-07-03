@@ -6,6 +6,7 @@ use App\Models\ConsultationRecord;
 use App\Models\DrNetworkFlowRun;
 use App\Models\Order;
 use App\Services\DrNetwork\Adapters\OlaHealth\OlaHealthStatusMapper;
+use App\Services\DrNetwork\Flow\DrNetworkFlowFailureService;
 use App\Services\DrNetwork\Flow\FlowRunner;
 use App\Services\DrNetwork\Resolvers\NetworkAdapterResolver;
 
@@ -13,6 +14,7 @@ class ConsultationStatusService
 {
     public function __construct(
         private FlowRunner $flowRunner,
+        private DrNetworkFlowFailureService $failureService,
         private NetworkAdapterResolver $adapterResolver,
     ) {}
 
@@ -52,7 +54,7 @@ class ConsultationStatusService
                 'outcome' => 'approved',
                 'raw' => $rawPayload,
             ]),
-            OlaHealthStatusMapper::INTERNAL_CONSULTATION_REJECTED => $this->flowRunner->fail($flowRun, 'rejected_by_provider', [
+            OlaHealthStatusMapper::INTERNAL_CONSULTATION_REJECTED => $this->failureService->failRun($flowRun, 'rejected_by_provider', [
                 'raw' => $rawPayload,
             ]),
             OlaHealthStatusMapper::INTERNAL_PENDING_PATIENT_INFO => $this->flowRunner->pause($flowRun, 'pending_patient_info'),

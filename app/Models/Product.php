@@ -105,7 +105,13 @@ class Product extends Model
             'network_product_mappings',
             'product_id',
             'dr_network_id'
-        )->withPivot(['identifier', 'is_active'])->withTimestamps();
+        )->withPivot([
+            'flow_id',
+            'external_service_id',
+            'external_service_key',
+            'external_config',
+            'is_active',
+        ])->withTimestamps();
     }
 
     public function getImageByType(ProductImageType|string $type): ?ProductImage

@@ -15,7 +15,7 @@ class UploadDocumentRequest extends FormRequest
     {
         return [
             'document_type_id' => ['required', 'integer', 'exists:document_types,id'],
-            'document' => ['required', 'file', 'max:20480'],
+            'document' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:20480'],
         ];
     }
 }

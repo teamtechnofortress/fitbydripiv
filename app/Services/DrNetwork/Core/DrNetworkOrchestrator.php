@@ -28,10 +28,10 @@ class DrNetworkOrchestrator
             'product_id' => $order->product_id,
         ]);
 
-        $flowRun = $this->assignmentService->assign($order);
+        $flowRun = $this->assignmentService->createFlowRunForAssignedOrder($order);
 
         if ($flowRun->status === DrNetworkFlowRun::STATUS_PENDING) {
-            Log::channel('dr_network')->info('Flow run assigned and pending; starting first step.', [
+            Log::channel('dr_network')->info('Flow run pending; starting first step.', [
                 'order_id' => $order->id,
                 'flow_run_id' => $flowRun->id,
                 'dr_network_id' => $flowRun->dr_network_id,
