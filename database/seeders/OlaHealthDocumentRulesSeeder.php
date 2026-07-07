@@ -21,7 +21,7 @@ class OlaHealthDocumentRulesSeeder extends Seeder
             ['rule_key' => 'ola_async_identity'],
             [
                 'dr_network_id' => $olaHealth->id,
-                'flow_key' => 'async_review',
+                'flow_key' => OlaHealthNetworkSeeder::ASYNC_FLOW_KEY,
                 'state_code' => null,
                 'product_code' => null,
                 'rule_name' => 'Identity Verification (Async)',
@@ -44,7 +44,7 @@ class OlaHealthDocumentRulesSeeder extends Seeder
             ['rule_key' => 'ola_video_identity'],
             [
                 'dr_network_id' => $olaHealth->id,
-                'flow_key' => 'video_consultation',
+                'flow_key' => OlaHealthNetworkSeeder::VIDEO_FLOW_KEY,
                 'state_code' => null,
                 'product_code' => null,
                 'rule_name' => 'Identity with Liveness Verification (Video)',
@@ -68,7 +68,7 @@ class OlaHealthDocumentRulesSeeder extends Seeder
         //     ['rule_key' => 'ola_video_selfie'],
         //     [
         //         'dr_network_id' => $olaHealth->id,
-        //         'flow_key' => 'video_consultation',
+        //         'flow_key' => OlaHealthNetworkSeeder::VIDEO_FLOW_KEY,
         //         'state_code' => null,
         //         'product_code' => null,
         //         'rule_name' => 'Selfie Verification (Video)',

@@ -51,7 +51,7 @@ class DrNetworkFlowController extends Controller
     public function currentStep(Order $order): JsonResponse
     {
         $this->authorizeOrder($order);
-        $order->loadMissing(['flowRun', 'product']);
+        $order->loadMissing(['flowRun', 'patient', 'product']);
 
         $flowRun = $order->flowRun;
 
@@ -86,7 +86,8 @@ class DrNetworkFlowController extends Controller
                 $order->dr_network_id,
                 $order->network_flow_key,
                 $order->product?->slug,
-                $order->state_code
+                $order->state_code,
+                $order
             );
 
             $payload['question_set'] = $questionSet;

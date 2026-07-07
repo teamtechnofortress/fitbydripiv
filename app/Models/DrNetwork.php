@@ -90,7 +90,12 @@ class DrNetwork extends Model
             ->all();
     }
 
-    public function flowDefinitions(): BelongsToMany
+    public function flowDefinitions(): HasMany
+    {
+        return $this->hasMany(NetworkFlowDefinition::class, 'dr_network_id');
+    }
+
+    public function stateMappedFlowDefinitions(): BelongsToMany
     {
         return $this->belongsToMany(
             NetworkFlowDefinition::class,

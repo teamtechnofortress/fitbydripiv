@@ -14,9 +14,19 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
     public function run(): void
     {
         $olaHealth = DrNetwork::query()->where('slug', 'ola-health')->firstOrFail();
-        $asyncFlow = NetworkFlowDefinition::query()->where('flow_key', 'async_review')->firstOrFail();
-        $videoFlow = NetworkFlowDefinition::query()->where('flow_key', 'video_consultation')->firstOrFail();
-        $followUpFlow = NetworkFlowDefinition::query()->where('flow_key', 'follow_up_async_review')->firstOrFail();
+        $asyncFlow = NetworkFlowDefinition::query()
+            ->forNetwork($olaHealth->id)
+            ->forKey(OlaHealthNetworkSeeder::ASYNC_FLOW_KEY)
+            ->firstOrFail();
+        $videoFlow = NetworkFlowDefinition::query()
+            ->forNetwork($olaHealth->id)
+            ->forKey(OlaHealthNetworkSeeder::VIDEO_FLOW_KEY)
+            ->firstOrFail();
+        // Follow-up async intake questions are temporarily disabled.
+        // $followUpFlow = NetworkFlowDefinition::query()
+        //     ->forNetwork($olaHealth->id)
+        //     ->forKey(OlaHealthNetworkSeeder::FOLLOW_UP_ASYNC_FLOW_KEY)
+        //     ->firstOrFail();
 
         $asyncQuestionSet = NetworkIntakeQuestionSet::query()->updateOrCreate(
             [
@@ -32,7 +42,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'status' => NetworkIntakeQuestionSet::STATUS_PUBLISHED,
                 'metadata' => [
                     'network' => 'ola_health',
-                    'flow_key' => 'async_review',
+                    'flow_key' => OlaHealthNetworkSeeder::ASYNC_FLOW_KEY,
                 ],
             ]
         );
@@ -51,33 +61,33 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'status' => NetworkIntakeQuestionSet::STATUS_PUBLISHED,
                 'metadata' => [
                     'network' => 'ola_health',
-                    'flow_key' => 'video_consultation',
+                    'flow_key' => OlaHealthNetworkSeeder::VIDEO_FLOW_KEY,
                 ],
             ]
         );
 
-        $followUpQuestionSet = NetworkIntakeQuestionSet::query()->updateOrCreate(
-            [
-                'dr_network_id' => $olaHealth->id,
-                'flow_id' => $followUpFlow->id,
-                'product_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
-                'state_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
-                'version' => 1,
-            ],
-            [
-                'set_key' => 'ola_follow_up_async_general',
-                'set_name' => 'Ola Health - Follow-up Async Consultation Questions',
-                'status' => NetworkIntakeQuestionSet::STATUS_PUBLISHED,
-                'metadata' => [
-                    'network' => 'ola_health',
-                    'flow_key' => 'follow_up_async_review',
-                ],
-            ]
-        );
+        // $followUpQuestionSet = NetworkIntakeQuestionSet::query()->updateOrCreate(
+        //     [
+        //         'dr_network_id' => $olaHealth->id,
+        //         'flow_id' => $followUpFlow->id,
+        //         'product_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
+        //         'state_code' => NetworkIntakeQuestionSet::ALL_SCOPE,
+        //         'version' => 1,
+        //     ],
+        //     [
+        //         'set_key' => 'ola_follow_up_async_general',
+        //         'set_name' => 'Ola Health - Follow-up Async Consultation Questions',
+        //         'status' => NetworkIntakeQuestionSet::STATUS_PUBLISHED,
+        //         'metadata' => [
+        //             'network' => 'ola_health',
+        //             'flow_key' => OlaHealthNetworkSeeder::FOLLOW_UP_ASYNC_FLOW_KEY,
+        //         ],
+        //     ]
+        // );
 
         $this->syncQuestions($asyncQuestionSet, includeInsuranceQuestion: false);
         $this->syncQuestions($videoQuestionSet, includeInsuranceQuestion: true);
-        $this->syncQuestions($followUpQuestionSet, includeInsuranceQuestion: false);
+        // $this->syncQuestions($followUpQuestionSet, includeInsuranceQuestion: false);
 
         Log::info('Ola Health intake questions seeded successfully');
     }
@@ -96,6 +106,22 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'is_conditional' => false,
                 'condition_rules' => null,
                 'network_field_mapping' => 'medical_history',
+                'network_validation' => [
+                    'blocking_rules' => [
+                        [
+                            'rule_key' => 'ola_chronic_condition_ineligible',
+                            'reason' => 'medical_ineligible',
+                            'message' => 'You are not eligible for this product based on your medical history.',
+                            'conditions' => [
+                                [
+                                    'source' => 'answers.ola_medical_history',
+                                    'operator' => 'equals',
+                                    'value' => 'yes',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
                 'metadata' => null,
             ],
             [
@@ -243,6 +269,60 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'placeholder' => 'E.g., Took ibuprofen, helped temporarily.',
                 ],
             ],
+            [
+                'question_key' => 'ola_pregnancy_status',
+                'question_text' => 'Are you pregnant, planning to become pregnant, or breastfeeding?',
+                'help_text' => 'Some medications and treatment plans are not appropriate during pregnancy or breastfeeding.',
+                'sort_order' => 10,
+                'input_type' => NetworkIntakeQuestion::INPUT_RADIO,
+                'options' => $this->yesNoNotSureOptions(),
+                'is_required' => true,
+                'is_conditional' => true,
+                'condition_rules' => [
+                    [
+                        'source' => 'patient.gender',
+                        'operator' => 'equals',
+                        'value' => 'female',
+                    ],
+                ],
+                'network_field_mapping' => 'pregnancy_status',
+                'network_validation' => [
+                    'blocking_rules' => [
+                        [
+                            'rule_key' => 'ola_pregnancy_ineligible',
+                            'reason' => 'pregnancy_ineligible',
+                            'message' => 'You are not eligible for this product while pregnant, planning pregnancy, or breastfeeding.',
+                            'conditions' => [
+                                [
+                                    'source' => 'answers.ola_pregnancy_status',
+                                    'operator' => 'in',
+                                    'value' => ['yes', 'not_sure'],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                'metadata' => null,
+            ],
+            [
+                'question_key' => 'ola_male_reproductive_history',
+                'question_text' => 'Have you had any prostate or reproductive health conditions the provider should know about?',
+                'help_text' => 'Include prostate conditions, fertility treatment, or related medications if applicable.',
+                'sort_order' => 11,
+                'input_type' => NetworkIntakeQuestion::INPUT_RADIO,
+                'options' => $this->yesNoOptions(),
+                'is_required' => true,
+                'is_conditional' => true,
+                'condition_rules' => [
+                    [
+                        'source' => 'patient.gender',
+                        'operator' => 'equals',
+                        'value' => 'male',
+                    ],
+                ],
+                'network_field_mapping' => 'male_reproductive_history',
+                'metadata' => null,
+            ],
         ];
 
         if ($includeInsuranceQuestion) {
@@ -250,7 +330,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'question_key' => 'ola_has_insurance',
                 'question_text' => 'Do you have health insurance?',
                 'help_text' => 'We can collect insurance information when required for this consultation.',
-                'sort_order' => 10,
+                'sort_order' => 12,
                 'input_type' => NetworkIntakeQuestion::INPUT_RADIO,
                 'options' => $this->yesNoOptions(),
                 'is_required' => true,
@@ -267,7 +347,10 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'question_set_id' => $questionSet->id,
                     'question_key' => $question['question_key'],
                 ],
-                array_merge($question, ['is_active' => true])
+                array_merge([
+                    'validation_rules' => null,
+                    'network_validation' => null,
+                ], $question, ['is_active' => true])
             );
         }
     }

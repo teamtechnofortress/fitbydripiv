@@ -13,6 +13,12 @@ use Illuminate\Support\Str;
 
 class OlaHealthNetworkSeeder extends Seeder
 {
+    public const ASYNC_FLOW_KEY = 'ola_health_async_review';
+
+    public const VIDEO_FLOW_KEY = 'ola_health_video_consultation';
+
+    // public const FOLLOW_UP_ASYNC_FLOW_KEY = 'ola_health_follow_up_async_review';
+
     private const VIDEO_STATE_CODES = [
         'AR',
         'KS',
@@ -59,7 +65,7 @@ class OlaHealthNetworkSeeder extends Seeder
                 'feature_flags' => [
                     'video_consultation' => true,
                     'async_review' => true,
-                    'follow_up_async_review' => true,
+                    // 'follow_up_async_review' => true,
                     'checkout_step' => true,
                     'payment_confirmation_step' => true,
                     'prescription_delivery' => false,
@@ -72,11 +78,13 @@ class OlaHealthNetworkSeeder extends Seeder
 
         $this->seedConfigValues($olaHealth);
 
-        $asyncFlow = NetworkFlowDefinition::query()->updateOrCreate(
-            ['flow_key' => 'async_review'],
-            [
-                'name' => 'Async Consultation Review',
-                'description' => 'Patient submits intake forms, then provider reviews and decides asynchronously.',
+        $asyncFlow = $this->updateOrCreateFlow(
+            network: $olaHealth,
+            legacyFlowKey: 'async_review',
+            flowKey: self::ASYNC_FLOW_KEY,
+            values: [
+                'name' => 'Ola Health Async Consultation Review',
+                'description' => 'Patient submits intake forms, then Ola Health reviews and decides asynchronously.',
                 'steps' => [
                     [
                         'step_key' => 'document_upload',
@@ -102,8 +110,8 @@ class OlaHealthNetworkSeeder extends Seeder
                     ],
                     [
                         'step_key' => 'provider_review',
-                        'name' => 'Provider Review',
-                        'description' => 'Wait for provider review and decision.',
+                        'name' => 'Ola Health Provider Review',
+                        'description' => 'Wait for Ola Health provider review and decision.',
                         'required' => true,
                         'order' => 6,
                     ],
@@ -112,11 +120,13 @@ class OlaHealthNetworkSeeder extends Seeder
             ]
         );
 
-        $videoFlow = NetworkFlowDefinition::query()->updateOrCreate(
-            ['flow_key' => 'video_consultation'],
-            [
-                'name' => 'Video Consultation',
-                'description' => 'Patient submits intake, selects a provider slot, then attends a video consultation.',
+        $videoFlow = $this->updateOrCreateFlow(
+            network: $olaHealth,
+            legacyFlowKey: 'video_consultation',
+            flowKey: self::VIDEO_FLOW_KEY,
+            values: [
+                'name' => 'Ola Health Video Consultation',
+                'description' => 'Patient submits intake, selects an Ola Health provider slot, then attends a video consultation.',
                 'steps' => [
                     [
                         'step_key' => 'document_upload',
@@ -149,8 +159,8 @@ class OlaHealthNetworkSeeder extends Seeder
                     ],
                     [
                         'step_key' => 'video_consultation',
-                        'name' => 'Video Consultation',
-                        'description' => 'Participate in a video call with a provider.',
+                        'name' => 'Ola Health Video Consultation',
+                        'description' => 'Participate in a video call with an Ola Health provider.',
                         'required' => true,
                         'order' => 7,
                     ],
@@ -159,37 +169,40 @@ class OlaHealthNetworkSeeder extends Seeder
             ]
         );
 
-        NetworkFlowDefinition::query()->updateOrCreate(
-            ['flow_key' => 'follow_up_async_review'],
-            [
-                'name' => 'Follow-up Async Consultation Review',
-                'description' => 'Patient submits follow-up information, then provider reviews and decides asynchronously.',
-                'steps' => [
-                    [
-                        'step_key' => 'intake_questions',
-                        'name' => 'Answer Follow-up Questions',
-                        'description' => 'Provide current symptoms, progress, medication response, and changes since the prior consultation.',
-                        'required' => true,
-                        'order' => 1,
-                    ],
-                    [
-                        'step_key' => 'review_and_submit',
-                        'name' => 'Review and Submit',
-                        'description' => 'Review follow-up information and submit to provider.',
-                        'required' => true,
-                        'order' => 2,
-                    ],
-                    [
-                        'step_key' => 'provider_review',
-                        'name' => 'Provider Review',
-                        'description' => 'Wait for provider review and decision.',
-                        'required' => true,
-                        'order' => 3,
-                    ],
-                ],
-                'is_active' => true,
-            ]
-        );
+        // Follow-up async flow is temporarily disabled.
+        // $this->updateOrCreateFlow(
+        //     network: $olaHealth,
+        //     legacyFlowKey: 'follow_up_async_review',
+        //     flowKey: self::FOLLOW_UP_ASYNC_FLOW_KEY,
+        //     values: [
+        //         'name' => 'Ola Health Follow-up Async Consultation Review',
+        //         'description' => 'Patient submits follow-up information, then Ola Health reviews and decides asynchronously.',
+        //         'steps' => [
+        //             [
+        //                 'step_key' => 'intake_questions',
+        //                 'name' => 'Answer Follow-up Questions',
+        //                 'description' => 'Provide current symptoms, progress, medication response, and changes since the prior consultation.',
+        //                 'required' => true,
+        //                 'order' => 1,
+        //             ],
+        //             [
+        //                 'step_key' => 'review_and_submit',
+        //                 'name' => 'Review and Submit',
+        //                 'description' => 'Review follow-up information and submit to provider.',
+        //                 'required' => true,
+        //                 'order' => 2,
+        //             ],
+        //             [
+        //                 'step_key' => 'provider_review',
+        //                 'name' => 'Ola Health Provider Review',
+        //                 'description' => 'Wait for Ola Health provider review and decision.',
+        //                 'required' => true,
+        //                 'order' => 3,
+        //             ],
+        //         ],
+        //         'is_active' => true,
+        //     ]
+        // );
 
         $states = State::query()->active()->get();
 
@@ -342,6 +355,40 @@ class OlaHealthNetworkSeeder extends Seeder
                 'order' => $startOrder + 1,
             ],
         ];
+    }
+
+    private function updateOrCreateFlow(
+        DrNetwork $network,
+        string $legacyFlowKey,
+        string $flowKey,
+        array $values
+    ): NetworkFlowDefinition
+    {
+        $flow = NetworkFlowDefinition::query()
+            ->forNetwork($network->id)
+            ->forKey($flowKey)
+            ->first();
+
+        if (! $flow) {
+            $flow = NetworkFlowDefinition::query()
+                ->forNetwork($network->id)
+                ->forKey($legacyFlowKey)
+                ->first();
+        }
+
+        if ($flow) {
+            $flow->update(array_merge($values, [
+                'dr_network_id' => $network->id,
+                'flow_key' => $flowKey,
+            ]));
+
+            return $flow->refresh();
+        }
+
+        return NetworkFlowDefinition::query()->create(array_merge($values, [
+            'dr_network_id' => $network->id,
+            'flow_key' => $flowKey,
+        ]));
     }
 
     private function seedConfigValues(DrNetwork $network): void

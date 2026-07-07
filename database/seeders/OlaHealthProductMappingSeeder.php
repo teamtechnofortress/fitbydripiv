@@ -22,7 +22,12 @@ class OlaHealthProductMappingSeeder extends Seeder
         }
 
         $flows = NetworkFlowDefinition::query()
-            ->whereIn('flow_key', ['async_review', 'video_consultation', 'follow_up_async_review'])
+            ->forNetwork($olaHealth->id)
+            ->whereIn('flow_key', [
+                OlaHealthNetworkSeeder::ASYNC_FLOW_KEY,
+                OlaHealthNetworkSeeder::VIDEO_FLOW_KEY,
+                // OlaHealthNetworkSeeder::FOLLOW_UP_ASYNC_FLOW_KEY,
+            ])
             ->get()
             ->keyBy('flow_key');
 
@@ -110,24 +115,25 @@ class OlaHealthProductMappingSeeder extends Seeder
 
         return collect($initialMappings)
             ->flatMap(fn (array $mapping): array => $this->initialFlowMappings($mapping))
-            ->merge([
-                $this->mapping(
-                    'tirzepatide',
-                    'follow_up_async_review',
-                    '1776',
-                    'fitbyshot-tirzepatide-injection',
-                    'follow-up-async',
-                    'Tirzepatide Injection - Follow Up'
-                ),
-                $this->mapping(
-                    'semaglutide',
-                    'follow_up_async_review',
-                    '1782',
-                    'fitbyshot-semaglutide-injection',
-                    'follow-up-async',
-                    'Semaglutide Injection - Follow Up'
-                ),
-            ])
+            // Follow-up async product mappings are temporarily disabled.
+            // ->merge([
+            //     $this->mapping(
+            //         'tirzepatide',
+            //         OlaHealthNetworkSeeder::FOLLOW_UP_ASYNC_FLOW_KEY,
+            //         '1776',
+            //         'fitbyshot-tirzepatide-injection',
+            //         'follow-up-async',
+            //         'Tirzepatide Injection - Follow Up'
+            //     ),
+            //     $this->mapping(
+            //         'semaglutide',
+            //         OlaHealthNetworkSeeder::FOLLOW_UP_ASYNC_FLOW_KEY,
+            //         '1782',
+            //         'fitbyshot-semaglutide-injection',
+            //         'follow-up-async',
+            //         'Semaglutide Injection - Follow Up'
+            //     ),
+            // ])
             ->all();
     }
 
@@ -142,7 +148,7 @@ class OlaHealthProductMappingSeeder extends Seeder
                 'initial',
                 $mapping['service_name']
             ),
-            ['async_review', 'video_consultation']
+            [OlaHealthNetworkSeeder::ASYNC_FLOW_KEY, OlaHealthNetworkSeeder::VIDEO_FLOW_KEY]
         );
     }
 

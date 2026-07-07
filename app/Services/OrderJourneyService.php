@@ -99,7 +99,8 @@ class OrderJourneyService
                 isReady: false,
                 journeyStatus: 'failed',
                 nextAction: 'contact_support',
-                message: 'We could not complete your consultation workflow. Please contact support.',
+                message: $flowRun->context['failure_message']
+                    ?? 'We could not complete your consultation workflow. Please contact support.',
                 flowRun: $flowRun,
                 failureReason: $flowRun->failure_reason,
                 failedStepKey: $flowRun->current_step_key

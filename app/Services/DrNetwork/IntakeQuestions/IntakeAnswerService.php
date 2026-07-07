@@ -5,18 +5,34 @@ namespace App\Services\DrNetwork\IntakeQuestions;
 use App\Models\NetworkIntakeQuestion;
 use App\Models\Order;
 use App\Models\OrderIntakeAnswer;
+use App\Services\DrNetwork\Flow\DrNetworkFlowFailureService;
 use App\Services\DrNetwork\Flow\FlowRunner;
+use Illuminate\Validation\ValidationException;
 
 class IntakeAnswerService
 {
     public function __construct(
         private FlowRunner $flowRunner,
+        private IntakeRuleContextBuilder $contextBuilder,
+        private IntakeQuestionRuleEvaluator $ruleEvaluator,
+        private IntakeAnswerBlockingRuleEvaluator $blockingRuleEvaluator,
+        private DrNetworkFlowFailureService $failureService,
     ) {}
 
     public function saveAnswer(Order $order, int $questionId, mixed $answerValue): void
     {
-        $order->loadMissing('flowRun');
-        $question = NetworkIntakeQuestion::query()->findOrFail($questionId);
+        $order->loadMissing(['flowRun', 'patient', 'product']);
+        $question = NetworkIntakeQuestion::query()
+            ->active()
+            ->findOrFail($questionId);
+
+        $context = $this->contextBuilder->build($order, $question->question_set_id);
+
+        if (! $this->ruleEvaluator->applies($question, $context)) {
+            throw ValidationException::withMessages([
+                'question_id' => 'This question is not applicable to this patient or order.',
+            ]);
+        }
 
         OrderIntakeAnswer::query()->updateOrCreate(
             ['order_id' => $order->id, 'question_id' => $questionId],
@@ -29,6 +45,23 @@ class IntakeAnswerService
                     'question_set_id' => $question->question_set_id,
                 ]),
             ]);
+        }
+
+        $order = $order->refresh();
+        $context = $this->contextBuilder->build($order, $question->question_set_id);
+        $blockingRule = $this->blockingRuleEvaluator->firstTriggeredRule($question, $context);
+
+        if ($blockingRule !== null) {
+            $this->failureService->failOrder($order, $blockingRule['reason'], [
+                'failure_message' => $blockingRule['message'],
+                'blocking_rule_key' => $blockingRule['rule_key'],
+                'blocking_question_id' => $question->id,
+                'blocking_question_key' => $question->question_key,
+                'blocking_answer' => $answerValue,
+                'conditions' => $blockingRule['conditions'],
+            ]);
+
+            return;
         }
 
         if ($order->flowRun?->current_step_key === 'intake_questions' && $this->allRequiredAnswered($order, $question->question_set_id)) {
@@ -46,23 +79,21 @@ class IntakeAnswerService
             ->ordered()
             ->get();
 
+        $context = $this->contextBuilder->build($order, $questionSetId);
+        $applicableQuestions = $questions
+            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->ruleEvaluator->applies($question, $context));
+
         $answersByQuestionId = OrderIntakeAnswer::query()
             ->where('order_id', $order->id)
-            ->whereIn('question_id', $questions->pluck('id'))
+            ->whereIn('question_id', $applicableQuestions->pluck('id'))
             ->get()
             ->mapWithKeys(fn (OrderIntakeAnswer $answer): array => [
                 $answer->question_id => $answer->decodedAnswerValue(),
             ]);
 
-        $answersByQuestionKey = $questions
-            ->mapWithKeys(fn (NetworkIntakeQuestion $question): array => [
-                $question->question_key => $answersByQuestionId->get($question->id),
-            ])
-            ->filter(fn (mixed $value): bool => ! $this->isBlankAnswer($value));
-
-        $requiredQuestions = $questions
+        $requiredQuestions = $applicableQuestions
             ->filter(fn (NetworkIntakeQuestion $question): bool => $question->is_required)
-            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->questionIsApplicable($question, $answersByQuestionKey->all()));
+            ->values();
 
         if ($requiredQuestions->isEmpty()) {
             return true;
@@ -70,46 +101,6 @@ class IntakeAnswerService
 
         return $requiredQuestions
             ->every(fn (NetworkIntakeQuestion $question): bool => ! $this->isBlankAnswer($answersByQuestionId->get($question->id)));
-    }
-
-    private function questionIsApplicable(NetworkIntakeQuestion $question, array $answersByQuestionKey): bool
-    {
-        if (! $question->is_conditional || empty($question->condition_rules)) {
-            return true;
-        }
-
-        foreach ($question->condition_rules as $condition) {
-            $dependencyKey = $condition['when'] ?? null;
-
-            if (! $dependencyKey) {
-                return false;
-            }
-
-            $answer = $answersByQuestionKey[$dependencyKey] ?? null;
-
-            if (array_key_exists('equals', $condition) && ! $this->answerEquals($answer, $condition['equals'])) {
-                return false;
-            }
-
-            if (array_key_exists('not_equals', $condition) && $this->answerEquals($answer, $condition['not_equals'])) {
-                return false;
-            }
-
-            if (array_key_exists('in', $condition) && ! in_array($answer, (array) $condition['in'], true)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private function answerEquals(mixed $answer, mixed $expected): bool
-    {
-        if (is_array($answer)) {
-            return in_array($expected, $answer, true);
-        }
-
-        return (string) $answer === (string) $expected;
     }
 
     private function isBlankAnswer(mixed $answer): bool

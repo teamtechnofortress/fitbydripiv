@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 
 class DrNetworkAssignmentService
 {
+    // private const OLA_HEALTH_FOLLOW_UP_ASYNC_FLOW_KEY = 'ola_health_follow_up_async_review';
+
     public function __construct(
         private NetworkStateResolver $stateResolver,
         private ProductIdentifierResolver $identifierResolver,
@@ -238,34 +240,38 @@ class DrNetworkAssignmentService
 
     private function flowForOrder(Order $order, int $networkId, NetworkFlowDefinition $resolvedFlow): NetworkFlowDefinition
     {
-        if (! $this->isFollowUpOrder($order)) {
-            return $resolvedFlow;
-        }
+        return $resolvedFlow;
 
-        $followUpFlow = NetworkFlowDefinition::query()
-            ->active()
-            ->where('flow_key', 'follow_up_async_review')
-            ->first();
-
-        if (! $followUpFlow) {
-            return $resolvedFlow;
-        }
-
-        $hasFollowUpMapping = NetworkProductMapping::query()
-            ->forNetwork($networkId)
-            ->forProduct($order->product_id)
-            ->forFlow($followUpFlow->id)
-            ->active()
-            ->exists();
-
-        return $hasFollowUpMapping ? $followUpFlow : $resolvedFlow;
+        // Follow-up flow selection is temporarily disabled.
+        // if (! $this->isFollowUpOrder($order)) {
+        //     return $resolvedFlow;
+        // }
+        //
+        // $followUpFlow = NetworkFlowDefinition::query()
+        //     ->active()
+        //     ->forNetwork($networkId)
+        //     ->forKey(self::OLA_HEALTH_FOLLOW_UP_ASYNC_FLOW_KEY)
+        //     ->first();
+        //
+        // if (! $followUpFlow) {
+        //     return $resolvedFlow;
+        // }
+        //
+        // $hasFollowUpMapping = NetworkProductMapping::query()
+        //     ->forNetwork($networkId)
+        //     ->forProduct($order->product_id)
+        //     ->forFlow($followUpFlow->id)
+        //     ->active()
+        //     ->exists();
+        //
+        // return $hasFollowUpMapping ? $followUpFlow : $resolvedFlow;
     }
 
-    private function isFollowUpOrder(Order $order): bool
-    {
-        return $order->purchase_type === Order::PRICING_TYPE_SUBSCRIPTION
-            && (int) ($order->billing_cycle_number ?? 1) > 1;
-    }
+    // private function isFollowUpOrder(Order $order): bool
+    // {
+    //     return $order->purchase_type === Order::PRICING_TYPE_SUBSCRIPTION
+    //         && (int) ($order->billing_cycle_number ?? 1) > 1;
+    // }
 
     private function stateCodeForOrder(Order $order): ?string
     {
