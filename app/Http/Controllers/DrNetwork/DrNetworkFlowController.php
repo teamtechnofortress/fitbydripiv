@@ -64,12 +64,16 @@ class DrNetworkFlowController extends Controller
                 'step' => 'failed',
                 'status' => DrNetworkFlowRun::STATUS_FAILED,
                 'failed_step_key' => $flowRun->current_step_key,
+                'failure_reason' => $flowRun->failure_reason,
+                'failure_message' => $flowRun->context['failure_message'] ?? null,
             ]);
         }
 
         $payload = [
             'step' => $flowRun->current_step_key,
             'status' => $flowRun->status,
+            'provider_review_requirements' => $this->providerReviewRequirements($flowRun),
+            'has_provider_review_requirements' => $this->hasProviderReviewRequirements($flowRun),
         ];
 
         if ($flowRun->current_step_key === 'document_upload') {
@@ -170,6 +174,8 @@ class DrNetworkFlowController extends Controller
         return response()->json([
             'current_step_key' => $flowRun?->current_step_key,
             'status' => $flowRun?->status,
+            'provider_review_requirements' => $flowRun ? $this->providerReviewRequirements($flowRun) : [],
+            'has_provider_review_requirements' => $flowRun ? $this->hasProviderReviewRequirements($flowRun) : false,
         ]);
     }
 
@@ -215,6 +221,8 @@ class DrNetworkFlowController extends Controller
             'network_case_id' => $record->network_case_id,
             'current_step_key' => $flowRun?->current_step_key,
             'status' => $flowRun?->status,
+            'provider_review_requirements' => $flowRun ? $this->providerReviewRequirements($flowRun) : [],
+            'has_provider_review_requirements' => $flowRun ? $this->hasProviderReviewRequirements($flowRun) : false,
         ]);
     }
 
@@ -229,7 +237,21 @@ class DrNetworkFlowController extends Controller
             'current_step_key' => $flowRun?->current_step_key,
             'pause_reason' => $flowRun?->pause_reason,
             'failure_reason' => $flowRun?->failure_reason,
+            'provider_review_requirements' => $flowRun ? $this->providerReviewRequirements($flowRun) : [],
+            'has_provider_review_requirements' => $flowRun ? $this->hasProviderReviewRequirements($flowRun) : false,
         ]);
+    }
+
+    private function providerReviewRequirements(DrNetworkFlowRun $flowRun): array
+    {
+        return is_array($flowRun->context['provider_review_requirements'] ?? null)
+            ? $flowRun->context['provider_review_requirements']
+            : [];
+    }
+
+    private function hasProviderReviewRequirements(DrNetworkFlowRun $flowRun): bool
+    {
+        return $this->providerReviewRequirements($flowRun) !== [];
     }
 
     private function authorizeOrder(Order $order): void {}

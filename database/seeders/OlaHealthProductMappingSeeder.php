@@ -86,30 +86,35 @@ class OlaHealthProductMappingSeeder extends Seeder
                 'service_name' => 'B-Complex',
                 'service_key' => 'fitbyshot-bcomplex',
                 'service_id' => '1780',
+                'protocol' => 'glutathione_mic_b12_initial',
             ],
             [
                 'product_slug' => 'glutathione',
                 'service_name' => 'Glutathione',
                 'service_key' => 'fitbyshot-glutathione',
                 'service_id' => '1778',
+                'protocol' => 'glutathione_mic_b12_initial',
             ],
             [
                 'product_slug' => 'nad-therapy',
                 'service_name' => 'NAD+',
                 'service_key' => 'fitbyshot-nad',
                 'service_id' => '1777',
+                'protocol' => 'nad_initial',
             ],
             [
                 'product_slug' => 'tirzepatide',
                 'service_name' => 'Tirzepatide Injection',
                 'service_key' => 'fitbyshot-tirzepatide-injection',
                 'service_id' => '1775',
+                'protocol' => 'glp1_initial',
             ],
             [
                 'product_slug' => 'semaglutide',
                 'service_name' => 'Semaglutide Injection',
                 'service_key' => 'fitbyshot-semaglutide-injection',
                 'service_id' => '1659',
+                'protocol' => 'glp1_initial',
             ],
         ];
 
@@ -146,7 +151,8 @@ class OlaHealthProductMappingSeeder extends Seeder
                 $mapping['service_id'],
                 $mapping['service_key'],
                 'initial',
-                $mapping['service_name']
+                $mapping['service_name'],
+                $mapping['protocol']
             ),
             [OlaHealthNetworkSeeder::ASYNC_FLOW_KEY, OlaHealthNetworkSeeder::VIDEO_FLOW_KEY]
         );
@@ -158,7 +164,8 @@ class OlaHealthProductMappingSeeder extends Seeder
         string $serviceId,
         string $serviceKey,
         string $sessionType,
-        string $serviceName
+        string $serviceName,
+        string $protocol = 'initial'
     ): array {
         return [
             'product_slug' => $productSlug,
@@ -168,6 +175,7 @@ class OlaHealthProductMappingSeeder extends Seeder
             'external_config' => [
                 'service_name' => $serviceName,
                 'session_type' => $sessionType,
+                'protocol' => $protocol,
             ],
         ];
     }

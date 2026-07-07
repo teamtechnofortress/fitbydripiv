@@ -12,11 +12,18 @@ class IntakeAnswerBlockingRuleEvaluator
 
     public function firstTriggeredRule(NetworkIntakeQuestion $question, array $context): ?array
     {
+        return $this->triggeredRules($question, $context)[0] ?? null;
+    }
+
+    public function triggeredRules(NetworkIntakeQuestion $question, array $context): array
+    {
         $rules = $question->network_validation['blocking_rules'] ?? [];
 
         if (! is_array($rules) || $rules === []) {
-            return null;
+            return [];
         }
+
+        $triggeredRules = [];
 
         foreach ($rules as $rule) {
             if (! is_array($rule)) {
@@ -24,15 +31,17 @@ class IntakeAnswerBlockingRuleEvaluator
             }
 
             if ($this->ruleEvaluator->conditionsPass($rule['conditions'] ?? [], $context)) {
-                return [
+                $triggeredRules[] = [
                     'rule_key' => $rule['rule_key'] ?? $question->question_key.'_blocking_rule',
                     'reason' => $rule['reason'] ?? 'intake_answer_ineligible',
                     'message' => $rule['message'] ?? 'You are not eligible for this consultation.',
+                    'hard_stop_type' => $rule['hard_stop_type'] ?? 'refer_out',
+                    'substance' => $rule['substance'] ?? $question->metadata['substance'] ?? null,
                     'conditions' => $rule['conditions'] ?? [],
                 ];
             }
         }
 
-        return null;
+        return $triggeredRules;
     }
 }

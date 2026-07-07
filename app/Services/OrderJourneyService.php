@@ -256,12 +256,16 @@ class OrderJourneyService
         }
 
         if ($flowRun !== null) {
+            $providerReviewRequirements = $this->providerReviewRequirements($flowRun);
+
             $response['workflow'] = [
                 'status' => $flowRun->status,
                 'current_step_key' => $flowRun->current_step_key,
                 'journey_step_key' => $currentStepKey,
                 'pause_reason' => $flowRun->pause_reason,
                 'failure_reason' => $flowRun->failure_reason,
+                'has_provider_review_requirements' => $providerReviewRequirements !== [],
+                'provider_review_requirements' => $providerReviewRequirements,
             ];
         }
 
@@ -284,5 +288,12 @@ class OrderJourneyService
             'provider_review' => 'awaiting_review',
             default => $flowRun->current_step_key,
         };
+    }
+
+    private function providerReviewRequirements(DrNetworkFlowRun $flowRun): array
+    {
+        return is_array($flowRun->context['provider_review_requirements'] ?? null)
+            ? $flowRun->context['provider_review_requirements']
+            : [];
     }
 }

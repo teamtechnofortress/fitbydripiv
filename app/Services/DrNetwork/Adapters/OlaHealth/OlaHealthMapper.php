@@ -17,12 +17,13 @@ class OlaHealthMapper
             'user_data' => $this->mapUserData($order),
             'address' => $this->mapAddress($order),
             'service_data' => [
-                'question_answer' => $this->mapAnswers($order),
+                'question_answer' => $this->mapAnswers($order, $context),
             ],
             'identifier' => $this->mapIdentifier($order, $context),
             'transaction_id' => (string) ($order->order_uuid ?? $order->id),
             'pharmacyDetails' => $this->mapPharmacyDetails($order),
             'schedule' => $this->mapSchedule($context),
+            'schedule_required' => $this->scheduleRequired($order, $context),
             'user_insurance' => [],
             'files' => $this->mapFiles($order),
         ];
@@ -93,9 +94,9 @@ class OlaHealthMapper
         ];
     }
 
-    private function mapAnswers(Order $order): array
+    private function mapAnswers(Order $order, array $context): array
     {
-        return OrderIntakeAnswer::query()
+        $answers = OrderIntakeAnswer::query()
             ->where('order_id', $order->id)
             ->with('question')
             ->get()
@@ -107,6 +108,33 @@ class OlaHealthMapper
                 'answer' => $this->stringAnswer($answer->decodedAnswerValue()),
                 'other_text' => '',
             ])
+            ->values()
+            ->all();
+
+        return array_merge($answers, $this->mapProviderReviewRequirements($context));
+    }
+
+    private function mapProviderReviewRequirements(array $context): array
+    {
+        $requirements = $context['provider_review_requirements'] ?? [];
+
+        if (! is_array($requirements) || $requirements === []) {
+            return [];
+        }
+
+        return collect($requirements)
+            ->map(function (array $requirement): array {
+                $substance = $requirement['substance'] ?? 'selected treatment';
+                $message = $requirement['message'] ?? 'Provider review is required before approval.';
+                $questionKey = $requirement['question_key'] ?? 'unknown_question';
+                $answer = $this->stringAnswer($requirement['answer'] ?? '');
+
+                return [
+                    'question_text' => sprintf('Provider review required for %s', $substance),
+                    'answer' => sprintf('%s Triggered by %s. Patient answer: %s', $message, $questionKey, $answer),
+                    'other_text' => '',
+                ];
+            })
             ->values()
             ->all();
     }
@@ -139,6 +167,21 @@ class OlaHealthMapper
             'schedule_end_date' => $context['slot_schedule_end_at'] ?? null,
             'provider_guid' => $context['provider_id'] ?? $context['slot_id'],
         ];
+    }
+
+    private function scheduleRequired(Order $order, array $context): bool
+    {
+        $externalConfig = is_array($context['external_config'] ?? null)
+            ? $context['external_config']
+            : [];
+
+        if (array_key_exists('schedule_required', $externalConfig)) {
+            return (bool) $externalConfig['schedule_required'];
+        }
+
+        $flowKey = strtolower((string) ($order->network_flow_key ?? ''));
+
+        return str_contains($flowKey, 'video_consultation');
     }
 
     private function scheduleType(Order $order): string

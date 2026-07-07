@@ -564,7 +564,10 @@ class OlaHealthAdapter extends BaseNetworkAdapter
 
     private function multipartFields(array $payload): array
     {
-        $this->assertValidSubmissionSchedule($payload['schedule'] ?? null);
+        $this->assertValidSubmissionSchedule(
+            $payload['schedule'] ?? null,
+            (bool) ($payload['schedule_required'] ?? false)
+        );
 
         $fields = [
             'transaction_id' => (string) ($payload['transaction_id'] ?? ''),
@@ -591,9 +594,13 @@ class OlaHealthAdapter extends BaseNetworkAdapter
         return array_filter($fields, fn (string $value): bool => $value !== '');
     }
 
-    private function assertValidSubmissionSchedule(mixed $schedule): void
+    private function assertValidSubmissionSchedule(mixed $schedule, bool $scheduleRequired): void
     {
         if (! is_array($schedule)) {
+            if (! $scheduleRequired) {
+                return;
+            }
+
             throw new RuntimeException('Ola Health submission requires schedule data.');
         }
 
