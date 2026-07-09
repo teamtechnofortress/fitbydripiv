@@ -300,17 +300,25 @@ class StripeWebhookService
         $nextCycle = $subscription->current_cycle_number + 1;
         $baseAmount = round((float) ($subscription->base_recurring_amount ?? $subscription->discounted_recurring_amount ?? 0), 2);
         $finalAmount = round(((float) ($invoice->amount_paid ?? 0)) / 100, 2);
+        $sourceOrder = $subscription->order;
 
         $order = Order::create([
             'patient_id' => $subscription->patient_id,
             'product_id' => $subscription->product_id,
+            'state_code' => $sourceOrder?->state_code,
+            'dr_network_id' => $sourceOrder?->dr_network_id,
+            'network_flow_id' => $sourceOrder?->network_flow_id,
+            'network_flow_key' => $sourceOrder?->network_flow_key,
+            'network_product_identifier' => $sourceOrder?->network_product_identifier,
+            'dr_network_fee_amount' => $sourceOrder?->dr_network_fee_amount ?? 0,
+            'dr_network_patient_fee_amount' => $sourceOrder?->dr_network_patient_fee_amount ?? 0,
             'price' => $finalAmount,
             'currency' => strtoupper($invoice->currency ?? 'USD'),
             'subscription_id' => $subscription->id,
             'billing_cycle_number' => $nextCycle,
             'purchase_type' => 'subscription',
-            'pricing_type' => $subscription->order?->pricing_type ?? 'subscription',
-            'pricing_option_id' => $subscription->pricing_option_id ?? $subscription->order?->pricing_option_id,
+            'pricing_type' => $sourceOrder?->pricing_type ?? 'subscription',
+            'pricing_option_id' => $subscription->pricing_option_id ?? $sourceOrder?->pricing_option_id,
             'base_amount' => $baseAmount,
             'coupon_discount_amount' => 0,
             'final_amount' => $finalAmount,

@@ -65,7 +65,8 @@ class DrNetworkFlowController extends Controller
                 'status' => DrNetworkFlowRun::STATUS_FAILED,
                 'failed_step_key' => $flowRun->current_step_key,
                 'failure_reason' => $flowRun->failure_reason,
-                'failure_message' => $flowRun->context['failure_message'] ?? null,
+                'failure_message' => $this->failureMessage($flowRun),
+                'status_message' => $this->failureMessage($flowRun),
             ]);
         }
 
@@ -237,6 +238,8 @@ class DrNetworkFlowController extends Controller
             'current_step_key' => $flowRun?->current_step_key,
             'pause_reason' => $flowRun?->pause_reason,
             'failure_reason' => $flowRun?->failure_reason,
+            'failure_message' => $flowRun ? $this->failureMessage($flowRun) : null,
+            'status_message' => $flowRun ? ($this->failureMessage($flowRun) ?: $flowRun->pause_reason) : null,
             'provider_review_requirements' => $flowRun ? $this->providerReviewRequirements($flowRun) : [],
             'has_provider_review_requirements' => $flowRun ? $this->hasProviderReviewRequirements($flowRun) : false,
         ]);
@@ -247,6 +250,23 @@ class DrNetworkFlowController extends Controller
         return is_array($flowRun->context['provider_review_requirements'] ?? null)
             ? $flowRun->context['provider_review_requirements']
             : [];
+    }
+
+    private function failureMessage(DrNetworkFlowRun $flowRun): ?string
+    {
+        $message = $flowRun->context['failure_message'] ?? $flowRun->context['error_message'] ?? null;
+
+        if (is_string($message) && trim($message) !== '') {
+            return trim($message);
+        }
+
+        $reason = $flowRun->failure_reason;
+
+        if (! is_string($reason) || trim($reason) === '') {
+            return null;
+        }
+
+        return str($reason)->replace('_', ' ')->ucfirst()->toString();
     }
 
     private function hasProviderReviewRequirements(DrNetworkFlowRun $flowRun): bool

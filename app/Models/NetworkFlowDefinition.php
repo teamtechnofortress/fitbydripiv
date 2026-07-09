@@ -19,12 +19,16 @@ class NetworkFlowDefinition extends Model
         'name',
         'description',
         'steps',
+        'network_fee_amount',
+        'patient_fee_amount',
         'is_active',
     ];
 
     protected $casts = [
         'dr_network_id' => 'integer',
         'steps' => 'array',
+        'network_fee_amount' => 'decimal:2',
+        'patient_fee_amount' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

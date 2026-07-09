@@ -27,6 +27,12 @@ class IntakeAnswerService
             ->active()
             ->findOrFail($questionId);
 
+        if ($question->isAutoFilled()) {
+            throw ValidationException::withMessages([
+                'question_id' => 'This question is filled automatically by the system.',
+            ]);
+        }
+
         $context = $this->contextBuilder->build($order, $question->question_set_id);
 
         if (! $this->ruleEvaluator->applies($question, $context)) {
@@ -48,36 +54,73 @@ class IntakeAnswerService
             ]);
         }
 
+        $autoFilledQuestions = $this->syncAutoFilledAnswers($order, $question->question_set_id);
+
         $order = $order->refresh();
         $context = $this->contextBuilder->build($order, $question->question_set_id);
-        $blockingRules = $this->blockingRuleEvaluator->triggeredRules($question, $context);
-        $terminalBlockingRules = array_values(array_filter(
-            $blockingRules,
-            fn (array $rule): bool => ($rule['hard_stop_type'] ?? 'refer_out') !== 'provider_review_required'
+        $questionsToEvaluate = collect([$question])
+            ->merge($autoFilledQuestions)
+            ->unique('id')
+            ->values();
+        $triggeredRules = $questionsToEvaluate
+            ->mapWithKeys(fn (NetworkIntakeQuestion $evaluatedQuestion): array => [
+                $evaluatedQuestion->id => [
+                    'question' => $evaluatedQuestion,
+                    'answer' => $context['answers.'.$evaluatedQuestion->question_key] ?? null,
+                    'rules' => $this->blockingRuleEvaluator->triggeredRules($evaluatedQuestion, $context),
+                ],
+            ])
+            ->filter(fn (array $entry): bool => $entry['rules'] !== [])
+            ->values()
+            ->all();
+        $allBlockingRules = collect($triggeredRules)
+            ->flatMap(fn (array $entry): array => $entry['rules'])
+            ->values()
+            ->all();
+        $terminalBlockingEntries = array_values(array_filter(
+            $triggeredRules,
+            fn (array $entry): bool => collect($entry['rules'])->contains(
+                fn (array $rule): bool => ($rule['hard_stop_type'] ?? IntakeAnswerBlockingRuleEvaluator::HARD_STOP_REFER_OUT) !== IntakeAnswerBlockingRuleEvaluator::HARD_STOP_PROVIDER_REVIEW_REQUIRED
+            )
         ));
-        $providerReviewRules = array_values(array_filter(
-            $blockingRules,
-            fn (array $rule): bool => ($rule['hard_stop_type'] ?? 'refer_out') === 'provider_review_required'
+        $providerReviewEntries = array_values(array_filter(
+            $triggeredRules,
+            fn (array $entry): bool => collect($entry['rules'])->contains(
+                fn (array $rule): bool => ($rule['hard_stop_type'] ?? IntakeAnswerBlockingRuleEvaluator::HARD_STOP_REFER_OUT) === IntakeAnswerBlockingRuleEvaluator::HARD_STOP_PROVIDER_REVIEW_REQUIRED
+            )
         ));
-
+        $terminalBlockingRules = $terminalBlockingEntries === []
+            ? []
+            : array_values(array_filter(
+                $terminalBlockingEntries[0]['rules'],
+                fn (array $rule): bool => ($rule['hard_stop_type'] ?? IntakeAnswerBlockingRuleEvaluator::HARD_STOP_REFER_OUT) !== IntakeAnswerBlockingRuleEvaluator::HARD_STOP_PROVIDER_REVIEW_REQUIRED
+            ));
         if ($terminalBlockingRules !== []) {
             $blockingRule = $terminalBlockingRules[0];
+            $blockingQuestion = $terminalBlockingEntries[0]['question'];
 
             $this->failureService->failOrder($order, $blockingRule['reason'], [
                 'failure_message' => $blockingRule['message'],
                 'blocking_rule_key' => $blockingRule['rule_key'],
-                'blocking_question_id' => $question->id,
-                'blocking_question_key' => $question->question_key,
-                'blocking_answer' => $answerValue,
-                'hard_stop_type' => $blockingRule['hard_stop_type'] ?? 'refer_out',
+                'blocking_question_id' => $blockingQuestion->id,
+                'blocking_question_key' => $blockingQuestion->question_key,
+                'blocking_answer' => $terminalBlockingEntries[0]['answer'],
+                'hard_stop_type' => $blockingRule['hard_stop_type'] ?? IntakeAnswerBlockingRuleEvaluator::HARD_STOP_REFER_OUT,
                 'conditions' => $blockingRule['conditions'],
-                'triggered_rules' => $blockingRules,
+                'triggered_rules' => $allBlockingRules,
             ]);
 
             return;
         }
 
-        $this->syncProviderReviewRequirements($order, $question, $answerValue, $providerReviewRules);
+        foreach ($providerReviewEntries as $entry) {
+            $rules = array_values(array_filter(
+                $entry['rules'],
+                fn (array $rule): bool => ($rule['hard_stop_type'] ?? IntakeAnswerBlockingRuleEvaluator::HARD_STOP_REFER_OUT) === IntakeAnswerBlockingRuleEvaluator::HARD_STOP_PROVIDER_REVIEW_REQUIRED
+            ));
+
+            $this->syncProviderReviewRequirements($order, $entry['question'], $entry['answer'], $rules);
+        }
 
         if ($order->flowRun?->current_step_key === 'intake_questions' && $this->allRequiredAnswered($order, $question->question_set_id)) {
             $this->flowRunner->advance($order->flowRun->refresh(), 'intake_questions', [
@@ -85,6 +128,89 @@ class IntakeAnswerService
                 'provider_review_requirements' => $order->flowRun->refresh()->context['provider_review_requirements'] ?? [],
             ]);
         }
+    }
+
+    private function syncAutoFilledAnswers(Order $order, int $questionSetId): array
+    {
+        $order->loadMissing(['patient']);
+        $filledQuestions = [];
+
+        $questions = NetworkIntakeQuestion::query()
+            ->where('question_set_id', $questionSetId)
+            ->active()
+            ->ordered()
+            ->get();
+
+        $context = $this->contextBuilder->build($order, $questionSetId);
+
+        $questions
+            ->filter(fn (NetworkIntakeQuestion $question): bool => $question->isAutoFilled())
+            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->ruleEvaluator->applies($question, $context))
+            ->each(function (NetworkIntakeQuestion $question) use ($order, $context, &$filledQuestions): void {
+                $answerValue = $this->autoFilledAnswerValue($order, $question, $context);
+
+                if ($this->isBlankAnswer($answerValue)) {
+                    return;
+                }
+
+                OrderIntakeAnswer::query()->updateOrCreate(
+                    ['order_id' => $order->id, 'question_id' => $question->id],
+                    ['answer_value' => $this->encodeAnswerValue($answerValue)]
+                );
+
+                $filledQuestions[] = $question;
+            });
+
+        return $filledQuestions;
+    }
+
+    private function autoFilledAnswerValue(Order $order, NetworkIntakeQuestion $question, array $context): mixed
+    {
+        return match ($question->autoFillType()) {
+            NetworkIntakeQuestion::AUTO_FILL_CURRENT_DATE => now()->toDateString(),
+            NetworkIntakeQuestion::AUTO_FILL_PATIENT_NAME => $this->patientFullName($order),
+            NetworkIntakeQuestion::AUTO_FILL_ORDER_UUID => $order->order_uuid ?? $order->uuid ?? (string) $order->id,
+            NetworkIntakeQuestion::AUTO_FILL_CALCULATED_BMI => $this->calculatedBmi($context),
+            default => null,
+        };
+    }
+
+    private function calculatedBmi(array $context): ?string
+    {
+        $feet = $context['answers.glp1_height_feet'] ?? null;
+        $inches = $context['answers.glp1_height_inches'] ?? null;
+        $weight = $context['answers.glp1_weight_lbs'] ?? null;
+
+        if (! is_numeric($feet) || ! is_numeric($inches) || ! is_numeric($weight)) {
+            return null;
+        }
+
+        $totalHeightInches = ((float) $feet * 12) + (float) $inches;
+
+        if ($totalHeightInches <= 0 || (float) $weight <= 0) {
+            return null;
+        }
+
+        $bmi = ((float) $weight * 703) / ($totalHeightInches * $totalHeightInches);
+
+        return number_format($bmi, 2, '.', '');
+    }
+
+    private function patientFullName(Order $order): ?string
+    {
+        $patient = $order->patient;
+
+        if (! $patient) {
+            return null;
+        }
+
+        $name = trim(implode(' ', array_filter([
+            $patient->first_name ?? null,
+            $patient->middle_name ?? null,
+            $patient->last_name ?? null,
+        ])));
+
+        return $name === '' ? null : $name;
     }
 
     private function syncProviderReviewRequirements(
@@ -114,7 +240,7 @@ class IntakeAnswerService
                 'rule_key' => $rule['rule_key'],
                 'reason' => $rule['reason'],
                 'message' => $rule['message'],
-                'hard_stop_type' => 'provider_review_required',
+                'hard_stop_type' => IntakeAnswerBlockingRuleEvaluator::HARD_STOP_PROVIDER_REVIEW_REQUIRED,
                 'substance' => $rule['substance'] ?? null,
                 'question_id' => $question->id,
                 'question_key' => $question->question_key,

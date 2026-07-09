@@ -134,6 +134,16 @@ class DrNetwork extends Model
         return $this->hasMany(DrNetworkWebhookEvent::class, 'dr_network_id');
     }
 
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(DrNetworkTransaction::class, 'dr_network_id');
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(DrNetworkPayout::class, 'dr_network_id');
+    }
+
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(

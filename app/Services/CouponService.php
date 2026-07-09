@@ -155,12 +155,17 @@ class CouponService
     protected function resolveOriginalAmount(Order $order): float
     {
         if ($order->pricingOption) {
-            return round((float) $order->pricingOption->final_price, 2);
+            return round((float) $order->pricingOption->final_price + $this->networkPatientFee($order), 2);
         }
 
         $currentFinalAmount = round((float) ($order->final_amount ?? $order->price), 2);
         $currentCouponDiscount = round((float) ($order->coupon_discount_amount ?? 0), 2);
 
         return round($currentFinalAmount + $currentCouponDiscount, 2);
+    }
+
+    private function networkPatientFee(Order $order): float
+    {
+        return max(0, round((float) ($order->dr_network_patient_fee_amount ?? 0), 2));
     }
 }

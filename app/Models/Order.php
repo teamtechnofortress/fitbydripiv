@@ -32,6 +32,8 @@ class Order extends Model
         'network_flow_id',
         'network_flow_key',
         'network_product_identifier',
+        'dr_network_fee_amount',
+        'dr_network_patient_fee_amount',
         'price',
         'currency',
         'subscription_id',
@@ -54,6 +56,8 @@ class Order extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'dr_network_fee_amount' => 'decimal:2',
+        'dr_network_patient_fee_amount' => 'decimal:2',
         'base_amount' => 'decimal:2',
         'coupon_discount_amount' => 'decimal:2',
         'final_amount' => 'decimal:2',
@@ -118,6 +122,11 @@ class Order extends Model
     public function consultationRecord(): HasOne
     {
         return $this->hasOne(ConsultationRecord::class, 'order_id');
+    }
+
+    public function drNetworkTransaction(): HasOne
+    {
+        return $this->hasOne(DrNetworkTransaction::class, 'order_id');
     }
 
     public function pricingOption(): BelongsTo

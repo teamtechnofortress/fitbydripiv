@@ -6,6 +6,7 @@ use App\Exceptions\DrNetwork\NetworkAssignmentException;
 use App\Models\Order;
 use App\Models\Patient;
 use App\Models\PatientIntake;
+use App\Models\State;
 use App\Services\CheckoutResponseService;
 use App\Services\DrNetwork\Assignment\DrNetworkAssignmentService;
 use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
@@ -25,6 +26,26 @@ class PatientIntakeController extends Controller
         protected DrNetworkAssignmentService $drNetworkAssignmentService,
         protected DrNetworkOrchestrator $drNetworkOrchestrator
     ) {}
+
+    public function states(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'country_code' => ['sometimes', 'string', 'size:2'],
+        ]);
+
+        $countryCode = strtoupper($validated['country_code'] ?? 'US');
+
+        $states = State::query()
+            ->active()
+            ->where('country_code', $countryCode)
+            ->orderBy('state_name')
+            ->pluck('state_name')
+            ->values();
+
+        return response()->json([
+            'data' => $states,
+        ]);
+    }
 
     public function fetchByEmail(Request $request): JsonResponse
     {

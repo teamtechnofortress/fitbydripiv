@@ -60,6 +60,11 @@ class OrderAdminController extends Controller
                 'status' => $order->status,
                 'payment_status' => $order->payment_status,
                 'price' => $order->price,
+                'base_amount' => $order->base_amount,
+                'coupon_discount_amount' => $order->coupon_discount_amount,
+                'dr_network_fee_amount' => $order->dr_network_fee_amount,
+                'dr_network_patient_fee_amount' => $order->dr_network_patient_fee_amount,
+                'final_amount' => $order->final_amount,
                 'currency' => $order->currency,
                 'patient' => [
                     'id' => $patient?->id,
@@ -119,6 +124,11 @@ class OrderAdminController extends Controller
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'price' => $order->price,
+            'base_amount' => $order->base_amount,
+            'coupon_discount_amount' => $order->coupon_discount_amount,
+            'dr_network_fee_amount' => $order->dr_network_fee_amount,
+            'dr_network_patient_fee_amount' => $order->dr_network_patient_fee_amount,
+            'final_amount' => $order->final_amount,
             'currency' => $order->currency,
             'patient' => $patient ? [
                 'id' => $patient->id,

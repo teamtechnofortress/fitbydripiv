@@ -85,6 +85,8 @@ class OlaHealthNetworkSeeder extends Seeder
             values: [
                 'name' => 'Ola Health Async Consultation Review',
                 'description' => 'Patient submits intake forms, then Ola Health reviews and decides asynchronously.',
+                'network_fee_amount' => 15,
+                'patient_fee_amount' => 25,
                 'steps' => [
                     [
                         'step_key' => 'document_upload',
@@ -127,6 +129,8 @@ class OlaHealthNetworkSeeder extends Seeder
             values: [
                 'name' => 'Ola Health Video Consultation',
                 'description' => 'Patient submits intake, selects an Ola Health provider slot, then attends a video consultation.',
+                'network_fee_amount' => 20,
+                'patient_fee_amount' => 30,
                 'steps' => [
                     [
                         'step_key' => 'document_upload',
@@ -145,7 +149,7 @@ class OlaHealthNetworkSeeder extends Seeder
                     ...$this->paymentJourneySteps(3),
                     [
                         'step_key' => 'slot_selection',
-                        'name' => 'Select Appointment Time',
+                        'name' => 'Select Appointmenchect Time',
                         'description' => 'Choose an available provider time for video consultation.',
                         'required' => true,
                         'order' => 5,
@@ -158,11 +162,11 @@ class OlaHealthNetworkSeeder extends Seeder
                         'order' => 6,
                     ],
                     [
-                        'step_key' => 'video_consultation',
-                        'name' => 'Ola Health Video Consultation',
-                        'description' => 'Participate in a video call with an Ola Health provider.',
+                        'step_key' => 'provider_review',
+                        'name' => 'Ola Health Provider Review',
+                        'description' => 'Wait for Ola Health provider review and decision.',
                         'required' => true,
-                        'order' => 7,
+                        'order' => 6,
                     ],
                 ],
                 'is_active' => true,
@@ -355,6 +359,13 @@ class OlaHealthNetworkSeeder extends Seeder
                 'order' => $startOrder + 1,
             ],
         ];
+    }
+
+    private function moneyEnv(string $key): float
+    {
+        $value = env($key, 0);
+
+        return is_numeric($value) ? max(0, round((float) $value, 2)) : 0.0;
     }
 
     private function updateOrCreateFlow(

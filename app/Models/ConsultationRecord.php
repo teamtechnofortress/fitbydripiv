@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ConsultationRecord extends Model
 {
@@ -37,5 +38,10 @@ class ConsultationRecord extends Model
     public function drNetwork(): BelongsTo
     {
         return $this->belongsTo(DrNetwork::class, 'dr_network_id');
+    }
+
+    public function drNetworkTransaction(): HasOne
+    {
+        return $this->hasOne(DrNetworkTransaction::class, 'consultation_record_id');
     }
 }

@@ -121,19 +121,25 @@ class FlowRunner
     public function fail(DrNetworkFlowRun $flowRun, string $reason, array $context = []): DrNetworkFlowRun
     {
         return DB::transaction(function () use ($flowRun, $reason, $context): DrNetworkFlowRun {
+            $errorMessage = $this->failureDisplayMessage($reason, $context);
+            $failureContext = array_merge($context, [
+                'failure_reason' => $reason,
+                'failure_message' => $errorMessage,
+            ]);
+
             $this->closeStep(
                 $flowRun,
                 $flowRun->current_step_key,
                 DrNetworkFlowRunStep::STATUS_FAILED,
-                $context,
-                $reason
+                $failureContext,
+                $errorMessage
             );
 
             $flowRun->update([
                 'status' => DrNetworkFlowRun::STATUS_FAILED,
                 'failure_reason' => $reason,
                 'failed_at' => now(),
-                'context' => array_merge($flowRun->context ?? [], $context),
+                'context' => array_merge($flowRun->context ?? [], $failureContext),
             ]);
 
             return $flowRun->refresh();
@@ -201,5 +207,16 @@ class FlowRunner
                 'error_message' => $errorMessage,
                 'completed_at' => now(),
             ]);
+    }
+
+    private function failureDisplayMessage(string $reason, array $context): string
+    {
+        $message = $context['failure_message'] ?? $context['error_message'] ?? null;
+
+        if (is_string($message) && trim($message) !== '') {
+            return trim($message);
+        }
+
+        return str($reason)->replace('_', ' ')->ucfirst()->toString();
     }
 }

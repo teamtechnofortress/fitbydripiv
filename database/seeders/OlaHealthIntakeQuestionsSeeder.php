@@ -188,18 +188,18 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                             'rule_key' => 'glp1_bmi_under_20',
                             'reason' => 'bmi_not_eligible',
                             'hard_stop_type' => 'refer_out',
-                            'message' => 'Based on BMI, this treatment is not clinically appropriate through this telehealth flow.',
-                            'conditions' => [
+                            'message' => 'Based on your height and weight, your calculated BMI does not meet the eligibility criteria for this treatment through this telehealth program.',                            'conditions' => [
                                 ['source' => 'answers.glp1_bmi', 'operator' => 'less_than', 'value' => 20],
                             ],
                         ],
                     ],
                 ],
                 metadata: [
+                    'frontend_hidden' => true,
+                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CALCULATED_BMI,
                     'calculation_required' => true,
                     'standard_protocol_min_bmi' => 23,
                     'microdosing_bmi_range' => ['min' => 20, 'max' => 22.9],
-                    'system_gap' => 'Current rule engine does not calculate BMI from height and weight server-side.',
                 ]
             ),
             $this->question(
@@ -400,7 +400,10 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             $this->question('glp1_compounding_consent', 'Compounding informed consent', 30, NetworkIntakeQuestion::INPUT_RADIO, $this->consentDeclineOptions(), helpText: 'Compounded medications are not FDA-approved and have not undergone FDA review for safety, efficacy, or quality.', networkValidation: $this->blockOnEquals('glp1_compounding_consent', 'decline', 'glp1_compounding_consent_declined', 'Compounding informed consent is required to proceed.', 'refer_out')),
             $this->question('glp1_preventive_screening_acknowledgment', 'Acknowledgment of preventive health screening responsibility', 31, NetworkIntakeQuestion::INPUT_RADIO, $this->agreeDisagreeOptions(), networkValidation: $this->blockOnEquals('glp1_preventive_screening_acknowledgment', 'disagree', 'glp1_preventive_screening_declined', 'Preventive health screening acknowledgment is required to proceed.', 'refer_out')),
             $this->question('glp1_patient_signature', 'Patient signature', 32, NetworkIntakeQuestion::INPUT_TEXT),
-            $this->question('glp1_signature_date', 'Signature date', 33, NetworkIntakeQuestion::INPUT_DATE),
+            $this->question('glp1_signature_date', 'Signature date', 33, NetworkIntakeQuestion::INPUT_DATE, metadata: [
+                'frontend_hidden' => true,
+                'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CURRENT_DATE,
+            ]),
         ];
 
         foreach ($questions as &$question) {

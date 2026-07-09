@@ -116,7 +116,9 @@ class CheckoutService
             ? $this->pricingService->resolveRecurringConfig($pricingOption)
             : null;
         $couponDiscountAmount = round((float) ($order->coupon_discount_amount ?? 0), 2);
-        $finalPrice = max(0, round($pricingOptionFinalPrice - $couponDiscountAmount, 2));
+        $networkPatientFee = $this->networkPatientFee($order);
+        $basePriceWithNetworkFee = round($basePrice + $networkPatientFee, 2);
+        $finalPrice = max(0, round($pricingOptionFinalPrice + $networkPatientFee - $couponDiscountAmount, 2));
 
         if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION && ! $recurring) {
             abort(422, 'Selected subscription option is not configured for recurring checkout.');
@@ -124,11 +126,11 @@ class CheckoutService
 
         if (
             (float) $order->price !== (float) $finalPrice
-            || (float) $order->base_amount !== (float) $basePrice
+            || (float) $order->base_amount !== (float) $basePriceWithNetworkFee
             || (float) $order->final_amount !== (float) $finalPrice
             || $order->frequency_months !== $frequencyMonths
         ) {
-            $order->base_amount = $basePrice;
+            $order->base_amount = $basePriceWithNetworkFee;
             $order->final_amount = $finalPrice;
             $order->price = $finalPrice;
             $order->frequency_months = $frequencyMonths;
@@ -152,6 +154,8 @@ class CheckoutService
                 'product_id' => (string) $product->id,
                 'pricing_option_id' => (string) $pricingOption->id,
                 'frequency_months' => $frequencyMonths,
+                'dr_network_fee_amount' => number_format((float) ($order->dr_network_fee_amount ?? 0), 2, '.', ''),
+                'dr_network_patient_fee_amount' => number_format($networkPatientFee, 2, '.', ''),
             ],
         ];
 
@@ -186,6 +190,8 @@ class CheckoutService
                     'product_id' => (string) $product->id,
                     'pricing_option_id' => (string) $pricingOption->id,
                     'frequency_months' => $frequencyMonths,
+                    'dr_network_fee_amount' => number_format((float) ($order->dr_network_fee_amount ?? 0), 2, '.', ''),
+                    'dr_network_patient_fee_amount' => number_format($networkPatientFee, 2, '.', ''),
                 ], $subscriptionMetadata),
             ];
         } else {
@@ -315,6 +321,8 @@ class CheckoutService
             'pricing_type' => $order->pricing_type,
             'price' => $order->price,
             'base_amount' => $order->base_amount,
+            'dr_network_fee_amount' => $order->dr_network_fee_amount,
+            'dr_network_patient_fee_amount' => $order->dr_network_patient_fee_amount,
             'final_amount' => $order->final_amount,
             'currency' => $order->currency,
             'product' => [
@@ -362,6 +370,7 @@ class CheckoutService
         $discountPercentage = round((float) ($pricingOption->discount_percent ?? 0), 2);
         $baseRecurringAmount = round((float) ($pricingOption->price ?? $finalPrice), 2);
         $discountedRecurringAmount = round($finalPrice, 2);
+        $networkPatientFee = $this->networkPatientFee($order);
         $discountDurationType = $pricingMetadata['discount_duration_type']
             ?? ($discountPercentage > 0 ? 'forever' : '');
         $discountRemainingCycles = $pricingMetadata['discount_remaining_cycles'] ?? '';
@@ -372,11 +381,18 @@ class CheckoutService
             'product_id' => (string) $product->id,
             'frequency_months' => $frequencyMonths === null ? '' : (string) $frequencyMonths,
             'total_cycles' => $totalCycles === '' ? '' : (string) max(1, (int) $totalCycles),
-            'base_recurring_amount' => number_format($baseRecurringAmount, 2, '.', ''),
+            'base_recurring_amount' => number_format($baseRecurringAmount + $networkPatientFee, 2, '.', ''),
             'discounted_recurring_amount' => number_format($discountedRecurringAmount, 2, '.', ''),
+            'dr_network_fee_amount' => number_format((float) ($order->dr_network_fee_amount ?? 0), 2, '.', ''),
+            'dr_network_patient_fee_amount' => number_format($networkPatientFee, 2, '.', ''),
             'discount_percentage' => number_format($discountPercentage, 2, '.', ''),
             'discount_duration_type' => (string) $discountDurationType,
             'discount_remaining_cycles' => $discountRemainingCycles === '' ? '' : (string) max(0, (int) $discountRemainingCycles),
         ];
+    }
+
+    private function networkPatientFee(Order $order): float
+    {
+        return max(0, round((float) ($order->dr_network_patient_fee_amount ?? 0), 2));
     }
 }

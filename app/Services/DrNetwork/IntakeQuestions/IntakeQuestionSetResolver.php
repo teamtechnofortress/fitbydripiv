@@ -3,6 +3,7 @@
 namespace App\Services\DrNetwork\IntakeQuestions;
 
 use App\Models\NetworkFlowDefinition;
+use App\Models\NetworkIntakeQuestion;
 use App\Models\NetworkIntakeQuestionSet;
 use App\Models\Order;
 
@@ -41,6 +42,10 @@ class IntakeQuestionSetResolver
                 ->filter(fn ($question): bool => $this->ruleEvaluator->applies($question, $context))
                 ->values();
         }
+
+        $questions = $questions
+            ->reject(fn (NetworkIntakeQuestion $question): bool => $question->isHiddenFromPatient())
+            ->values();
 
         return [
             'set_id' => $set->id,

@@ -190,6 +190,19 @@ class OlaHealthAdapter extends BaseNetworkAdapter
         return OlaHealthStatusMapper::toInternal($networkStatus);
     }
 
+    public function testAuthentication(): array
+    {
+        $token = $this->getAccessToken();
+
+        return [
+            'ok' => true,
+            'adapter_key' => $this->adapterKey,
+            'base_url' => $this->baseUrl,
+            'tenant_present' => filled($this->tenant),
+            'access_token_fingerprint' => $this->fingerprint($token),
+        ];
+    }
+
     private function getAccessToken(): string
     {
         $cacheKey = $this->accessTokenCacheKey();

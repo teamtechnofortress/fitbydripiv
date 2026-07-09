@@ -6,6 +6,33 @@ use App\Models\NetworkIntakeQuestion;
 
 class IntakeQuestionRuleEvaluator
 {
+    public const OPERATOR_EQUALS = 'equals';
+
+    public const OPERATOR_NOT_EQUALS = 'not_equals';
+
+    public const OPERATOR_IN = 'in';
+
+    public const OPERATOR_NOT_IN = 'not_in';
+
+    public const OPERATOR_EXISTS = 'exists';
+
+    public const OPERATOR_MISSING = 'missing';
+
+    public const OPERATOR_GREATER_THAN = 'greater_than';
+
+    public const OPERATOR_LESS_THAN = 'less_than';
+
+    public const OPERATORS = [
+        self::OPERATOR_EQUALS,
+        self::OPERATOR_NOT_EQUALS,
+        self::OPERATOR_IN,
+        self::OPERATOR_NOT_IN,
+        self::OPERATOR_EXISTS,
+        self::OPERATOR_MISSING,
+        self::OPERATOR_GREATER_THAN,
+        self::OPERATOR_LESS_THAN,
+    ];
+
     public function applies(NetworkIntakeQuestion $question, array $context): bool
     {
         if (! $question->is_conditional || empty($question->condition_rules)) {
@@ -43,14 +70,14 @@ class IntakeQuestionRuleEvaluator
         $expected = $condition['value'] ?? $this->legacyExpectedValue($condition);
 
         return match ($operator) {
-            'equals' => $this->equals($actual, $expected),
-            'not_equals' => ! $this->equals($actual, $expected),
-            'in' => in_array($this->normalizeComparable($actual), $this->normalizeList($expected), true),
-            'not_in' => ! in_array($this->normalizeComparable($actual), $this->normalizeList($expected), true),
-            'exists' => ! $this->isBlank($actual),
-            'missing' => $this->isBlank($actual),
-            'greater_than' => is_numeric($actual) && is_numeric($expected) && (float) $actual > (float) $expected,
-            'less_than' => is_numeric($actual) && is_numeric($expected) && (float) $actual < (float) $expected,
+            self::OPERATOR_EQUALS => $this->equals($actual, $expected),
+            self::OPERATOR_NOT_EQUALS => ! $this->equals($actual, $expected),
+            self::OPERATOR_IN => in_array($this->normalizeComparable($actual), $this->normalizeList($expected), true),
+            self::OPERATOR_NOT_IN => ! in_array($this->normalizeComparable($actual), $this->normalizeList($expected), true),
+            self::OPERATOR_EXISTS => ! $this->isBlank($actual),
+            self::OPERATOR_MISSING => $this->isBlank($actual),
+            self::OPERATOR_GREATER_THAN => is_numeric($actual) && is_numeric($expected) && (float) $actual > (float) $expected,
+            self::OPERATOR_LESS_THAN => is_numeric($actual) && is_numeric($expected) && (float) $actual < (float) $expected,
             default => false,
         };
     }
@@ -65,19 +92,26 @@ class IntakeQuestionRuleEvaluator
     private function legacyOperator(array $condition): string
     {
         return match (true) {
-            array_key_exists('equals', $condition) => 'equals',
-            array_key_exists('not_equals', $condition) => 'not_equals',
-            array_key_exists('in', $condition) => 'in',
-            array_key_exists('not_in', $condition) => 'not_in',
-            array_key_exists('exists', $condition) => 'exists',
-            array_key_exists('missing', $condition) => 'missing',
-            default => 'equals',
+            array_key_exists(self::OPERATOR_EQUALS, $condition) => self::OPERATOR_EQUALS,
+            array_key_exists(self::OPERATOR_NOT_EQUALS, $condition) => self::OPERATOR_NOT_EQUALS,
+            array_key_exists(self::OPERATOR_IN, $condition) => self::OPERATOR_IN,
+            array_key_exists(self::OPERATOR_NOT_IN, $condition) => self::OPERATOR_NOT_IN,
+            array_key_exists(self::OPERATOR_EXISTS, $condition) => self::OPERATOR_EXISTS,
+            array_key_exists(self::OPERATOR_MISSING, $condition) => self::OPERATOR_MISSING,
+            default => self::OPERATOR_EQUALS,
         };
     }
 
     private function legacyExpectedValue(array $condition): mixed
     {
-        foreach (['equals', 'not_equals', 'in', 'not_in', 'exists', 'missing'] as $key) {
+        foreach ([
+            self::OPERATOR_EQUALS,
+            self::OPERATOR_NOT_EQUALS,
+            self::OPERATOR_IN,
+            self::OPERATOR_NOT_IN,
+            self::OPERATOR_EXISTS,
+            self::OPERATOR_MISSING,
+        ] as $key) {
             if (array_key_exists($key, $condition)) {
                 return $condition[$key];
             }

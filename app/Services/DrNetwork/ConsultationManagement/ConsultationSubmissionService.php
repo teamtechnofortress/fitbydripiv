@@ -6,6 +6,7 @@ use App\Models\ConsultationRecord;
 use App\Models\Order;
 use App\Services\DrNetwork\Adapters\OlaHealth\OlaHealthMapper;
 use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
+use App\Services\DrNetwork\Finance\DrNetworkFinanceService;
 use App\Services\DrNetwork\Flow\FlowRunner;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -16,6 +17,7 @@ class ConsultationSubmissionService
         private DrNetworkOrchestrator $orchestrator,
         private FlowRunner $flowRunner,
         private OlaHealthMapper $mapper,
+        private DrNetworkFinanceService $financeService,
     ) {}
 
     public function submit(Order $order): ConsultationRecord
@@ -44,6 +46,8 @@ class ConsultationSubmissionService
                     'network_metadata' => $response['raw'] ?? [],
                 ]
             );
+
+            $this->financeService->recordTransactionForSubmission($order, $record);
 
             $flowRun->update([
                 'context' => array_merge($context, [

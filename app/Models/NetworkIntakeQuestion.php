@@ -48,6 +48,21 @@ class NetworkIntakeQuestion extends Model
         self::INPUT_NESTED,
     ];
 
+    public const AUTO_FILL_CURRENT_DATE = 'current_date';
+
+    public const AUTO_FILL_PATIENT_NAME = 'patient_name';
+
+    public const AUTO_FILL_ORDER_UUID = 'order_uuid';
+
+    public const AUTO_FILL_CALCULATED_BMI = 'calculated_bmi';
+
+    public const AUTO_FILL_TYPES = [
+        self::AUTO_FILL_CURRENT_DATE,
+        self::AUTO_FILL_PATIENT_NAME,
+        self::AUTO_FILL_ORDER_UUID,
+        self::AUTO_FILL_CALCULATED_BMI,
+    ];
+
     protected $table = 'network_intake_questions';
 
     protected $fillable = [
@@ -112,5 +127,24 @@ class NetworkIntakeQuestion extends Model
     public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function autoFillType(): ?string
+    {
+        $autoFill = $this->metadata['auto_fill'] ?? null;
+
+        return is_string($autoFill) && in_array($autoFill, self::AUTO_FILL_TYPES, true)
+            ? $autoFill
+            : null;
+    }
+
+    public function isAutoFilled(): bool
+    {
+        return $this->autoFillType() !== null;
+    }
+
+    public function isHiddenFromPatient(): bool
+    {
+        return $this->isAutoFilled() || (bool) ($this->metadata['frontend_hidden'] ?? false);
     }
 }

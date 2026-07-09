@@ -3,10 +3,20 @@
 namespace App\Providers;
 
 use App\Models\Faq;
+use App\Models\DocumentType;
+use App\Models\DrNetwork;
+use App\Models\DrNetworkWebhookEvent;
+use App\Models\NetworkDocumentRule;
+use App\Models\NetworkFlowDefinition;
+use App\Models\NetworkIntakeQuestion;
+use App\Models\NetworkIntakeQuestionSet;
+use App\Models\NetworkProductMapping;
+use App\Models\NetworkStateMapping;
 use App\Models\Order;
 use App\Models\PageSection;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\State;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -40,6 +50,16 @@ class AppServiceProvider extends ServiceProvider
             'users'         => User::class,
             'product'       => Product::class,
             'section'       => PageSection::class,
+            'document_types' => DocumentType::class,
+            'dr_networks' => DrNetwork::class,
+            'dr_network_webhook_events' => DrNetworkWebhookEvent::class,
+            'network_document_rules' => NetworkDocumentRule::class,
+            'network_flow_definitions' => NetworkFlowDefinition::class,
+            'network_intake_questions' => NetworkIntakeQuestion::class,
+            'network_intake_question_sets' => NetworkIntakeQuestionSet::class,
+            'network_product_mappings' => NetworkProductMapping::class,
+            'network_state_mappings' => NetworkStateMapping::class,
+            'states' => State::class,
         ]);
 
         VerifyEmail::createUrlUsing(function ($notifiable) {

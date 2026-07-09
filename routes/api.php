@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\OrderAdminController;
+use App\Http\Controllers\Admin\DrNetworkAdminController;
+use App\Http\Controllers\Admin\DrNetworkFinanceController;
 use App\Http\Controllers\Admin\SubscriptionAdminController;
 use App\Http\Controllers\Admin\WebhookAdminController;
 use App\Http\Controllers\AdminCouponController;
@@ -119,6 +121,7 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::get('patients/intake-form', [PatientIntakeController::class, 'fetchByEmail'])->name('patients.intake-form.show');
+    Route::get('intake/states', [PatientIntakeController::class, 'states'])->name('patients.intake-form.states');
     Route::post('intake/{order_uuid}', [PatientIntakeController::class, 'submitIntakeForm'])->name('patients.intake-form');
 
     // Patient
@@ -201,6 +204,77 @@ Route::prefix('v1')->group(function () {
             Route::get('subscriptions', [SubscriptionAdminController::class, 'index'])->name('admin.subscriptions.index');
             Route::get('subscriptions/{subscription}', [SubscriptionAdminController::class, 'show'])->name('admin.subscriptions.show');
             Route::get('webhooks/{webhook}', [WebhookAdminController::class, 'show'])->name('admin.webhooks.show');
+
+            Route::get('states', [DrNetworkAdminController::class, 'listStates'])->name('admin.dr-networks.states.index');
+            Route::post('states', [DrNetworkAdminController::class, 'storeState'])->name('admin.dr-networks.states.store');
+            Route::get('document-types', [DrNetworkAdminController::class, 'listDocumentTypes'])->name('admin.dr-networks.document-types.index');
+            Route::post('document-types', [DrNetworkAdminController::class, 'storeDocumentType'])->name('admin.dr-networks.document-types.store');
+
+            Route::get('dr-networks', [DrNetworkAdminController::class, 'indexNetworks'])->name('admin.dr-networks.index');
+            Route::post('dr-networks', [DrNetworkAdminController::class, 'storeNetwork'])->name('admin.dr-networks.store');
+            Route::get('dr-networks/state-mappings/coverage-check', [DrNetworkAdminController::class, 'coverageCheck'])->name('admin.dr-networks.state-mappings.coverage-check');
+            Route::get('dr-networks/state-mappings', [DrNetworkAdminController::class, 'listStateMappings'])->name('admin.dr-networks.state-mappings.index');
+            Route::post('dr-networks/state-mappings', [DrNetworkAdminController::class, 'storeStateMapping'])->name('admin.dr-networks.state-mappings.store');
+            Route::patch('dr-networks/state-mappings/{mapping}', [DrNetworkAdminController::class, 'updateStateMapping'])->name('admin.dr-networks.state-mappings.update');
+            Route::delete('dr-networks/state-mappings/{mapping}', [DrNetworkAdminController::class, 'destroyStateMapping'])->name('admin.dr-networks.state-mappings.destroy');
+            Route::post('dr-networks/state-mappings/{mapping}/toggle', [DrNetworkAdminController::class, 'toggleStateMapping'])->name('admin.dr-networks.state-mappings.toggle');
+            Route::patch('dr-networks/product-mappings/{mapping}', [DrNetworkAdminController::class, 'updateProductMapping'])->name('admin.dr-networks.product-mappings.update');
+            Route::delete('dr-networks/product-mappings/{mapping}', [DrNetworkAdminController::class, 'destroyProductMapping'])->name('admin.dr-networks.product-mappings.destroy');
+            Route::post('dr-networks/product-mappings/{mapping}/toggle', [DrNetworkAdminController::class, 'toggleProductMapping'])->name('admin.dr-networks.product-mappings.toggle');
+            Route::patch('document-rules/{rule}', [DrNetworkAdminController::class, 'updateDocumentRule'])->name('admin.dr-networks.document-rules.update');
+            Route::delete('document-rules/{rule}', [DrNetworkAdminController::class, 'destroyDocumentRule'])->name('admin.dr-networks.document-rules.destroy');
+            Route::post('document-rules/{rule}/preview', [DrNetworkAdminController::class, 'previewDocumentRule'])->name('admin.dr-networks.document-rules.preview');
+            Route::get('flows/{flow}', [DrNetworkAdminController::class, 'showFlow'])->name('admin.dr-networks.flows.show');
+            Route::patch('flows/{flow}', [DrNetworkAdminController::class, 'updateFlow'])->name('admin.dr-networks.flows.update');
+            Route::delete('flows/{flow}', [DrNetworkAdminController::class, 'destroyFlow'])->name('admin.dr-networks.flows.destroy');
+            Route::post('flows/{flow}/validate', [DrNetworkAdminController::class, 'validateFlowDefinition'])->name('admin.dr-networks.flows.validate');
+            Route::post('flows/{flow}/clone', [DrNetworkAdminController::class, 'cloneFlow'])->name('admin.dr-networks.flows.clone');
+            Route::get('question-sets/{set}', [DrNetworkAdminController::class, 'showQuestionSet'])->name('admin.dr-networks.question-sets.show');
+            Route::patch('question-sets/{set}', [DrNetworkAdminController::class, 'updateQuestionSet'])->name('admin.dr-networks.question-sets.update');
+            Route::post('question-sets/{set}/validate', [DrNetworkAdminController::class, 'validateQuestionSet'])->name('admin.dr-networks.question-sets.validate');
+            Route::post('question-sets/{set}/publish', [DrNetworkAdminController::class, 'publishQuestionSet'])->name('admin.dr-networks.question-sets.publish');
+            Route::post('question-sets/{set}/archive', [DrNetworkAdminController::class, 'archiveQuestionSet'])->name('admin.dr-networks.question-sets.archive');
+            Route::post('question-sets/{set}/clone', [DrNetworkAdminController::class, 'cloneQuestionSet'])->name('admin.dr-networks.question-sets.clone');
+            Route::get('question-sets/{set}/questions', [DrNetworkAdminController::class, 'listQuestions'])->name('admin.dr-networks.question-sets.questions.index');
+            Route::post('question-sets/{set}/questions', [DrNetworkAdminController::class, 'storeQuestion'])->name('admin.dr-networks.question-sets.questions.store');
+            Route::post('question-sets/{set}/preview', [DrNetworkAdminController::class, 'previewQuestionSet'])->name('admin.dr-networks.question-sets.preview');
+            Route::post('question-sets/{set}/reorder-bulk', [DrNetworkAdminController::class, 'reorderQuestionsBulk'])->name('admin.dr-networks.question-sets.reorder-bulk');
+            Route::patch('questions/{question}', [DrNetworkAdminController::class, 'updateQuestion'])->name('admin.dr-networks.questions.update');
+            Route::delete('questions/{question}', [DrNetworkAdminController::class, 'destroyQuestion'])->name('admin.dr-networks.questions.destroy');
+            Route::post('questions/{question}/reorder', [DrNetworkAdminController::class, 'reorderQuestion'])->name('admin.dr-networks.questions.reorder');
+            Route::post('questions/{question}/test-blocking-rule', [DrNetworkAdminController::class, 'testBlockingRule'])->name('admin.dr-networks.questions.test-blocking-rule');
+            Route::get('dr-networks/{network}', [DrNetworkAdminController::class, 'showNetwork'])->name('admin.dr-networks.show');
+            Route::patch('dr-networks/{network}', [DrNetworkAdminController::class, 'updateNetwork'])->name('admin.dr-networks.update');
+            Route::post('dr-networks/{network}/toggle', [DrNetworkAdminController::class, 'toggleNetwork'])->name('admin.dr-networks.toggle');
+            Route::delete('dr-networks/{network}', [DrNetworkAdminController::class, 'destroyNetwork'])->name('admin.dr-networks.destroy');
+            Route::get('dr-networks/{network}/credentials', [DrNetworkAdminController::class, 'showCredentials'])->name('admin.dr-networks.credentials.show');
+            Route::put('dr-networks/{network}/credentials', [DrNetworkAdminController::class, 'updateCredentials'])->name('admin.dr-networks.credentials.update');
+            Route::post('dr-networks/{network}/credentials/test', [DrNetworkAdminController::class, 'testCredentials'])->name('admin.dr-networks.credentials.test');
+            Route::get('dr-networks/{network}/flows', [DrNetworkAdminController::class, 'listFlows'])->name('admin.dr-networks.flows.index');
+            Route::post('dr-networks/{network}/flows', [DrNetworkAdminController::class, 'storeFlow'])->name('admin.dr-networks.flows.store');
+            Route::get('dr-networks/{network}/flows/{flow}/content-coverage', [DrNetworkAdminController::class, 'flowContentCoverage'])->name('admin.dr-networks.flows.content-coverage');
+            Route::get('dr-networks/{network}/product-mappings/matrix', [DrNetworkAdminController::class, 'productMappingMatrix'])->name('admin.dr-networks.product-mappings.matrix');
+            Route::get('dr-networks/{network}/product-mappings', [DrNetworkAdminController::class, 'listProductMappings'])->name('admin.dr-networks.product-mappings.index');
+            Route::post('dr-networks/{network}/product-mappings', [DrNetworkAdminController::class, 'storeProductMapping'])->name('admin.dr-networks.product-mappings.store');
+            Route::get('dr-networks/{network}/question-sets', [DrNetworkAdminController::class, 'listQuestionSets'])->name('admin.dr-networks.question-sets.index');
+            Route::post('dr-networks/{network}/question-sets', [DrNetworkAdminController::class, 'storeQuestionSet'])->name('admin.dr-networks.question-sets.store');
+            Route::get('dr-networks/{network}/document-rules', [DrNetworkAdminController::class, 'listDocumentRules'])->name('admin.dr-networks.document-rules.index');
+            Route::post('dr-networks/{network}/document-rules', [DrNetworkAdminController::class, 'storeDocumentRule'])->name('admin.dr-networks.document-rules.store');
+            Route::get('dr-networks/{network}/webhook-config', [DrNetworkAdminController::class, 'webhookConfig'])->name('admin.dr-networks.webhook-config.show');
+            Route::patch('dr-networks/{network}/webhook-config', [DrNetworkAdminController::class, 'updateWebhookConfig'])->name('admin.dr-networks.webhook-config.update');
+            Route::get('dr-networks/{network}/webhook-log', [DrNetworkAdminController::class, 'webhookLog'])->name('admin.dr-networks.webhook-log.index');
+            Route::post('dr-networks/{network}/webhook-log/{event}/replay', [DrNetworkAdminController::class, 'replayWebhook'])->name('admin.dr-networks.webhook-log.replay');
+            Route::get('dr-networks/{network}/cases', [DrNetworkAdminController::class, 'cases'])->name('admin.dr-networks.cases.index');
+            Route::get('dr-networks/{network}/cases/{order}', [DrNetworkAdminController::class, 'showCase'])->name('admin.dr-networks.cases.show');
+            Route::get('dr-networks/{network}/flow-runs', [DrNetworkAdminController::class, 'flowRuns'])->name('admin.dr-networks.flow-runs.index');
+            Route::get('dr-networks/{network}/flow-runs/{run}', [DrNetworkAdminController::class, 'showFlowRun'])->name('admin.dr-networks.flow-runs.show');
+            Route::post('dr-networks/{network}/flow-runs/{run}/retry-poll', [DrNetworkAdminController::class, 'retryFlowRunPoll'])->name('admin.dr-networks.flow-runs.retry-poll');
+            Route::get('dr-networks/{network}/finance/summary', [DrNetworkFinanceController::class, 'summary'])->name('admin.dr-networks.finance.summary');
+            Route::get('dr-networks/{network}/finance/transactions', [DrNetworkFinanceController::class, 'transactions'])->name('admin.dr-networks.finance.transactions.index');
+            Route::post('dr-networks/{network}/finance/transactions/{transaction}/void', [DrNetworkFinanceController::class, 'voidTransaction'])->name('admin.dr-networks.finance.transactions.void');
+            Route::get('dr-networks/{network}/finance/payouts', [DrNetworkFinanceController::class, 'payouts'])->name('admin.dr-networks.finance.payouts.index');
+            Route::post('dr-networks/{network}/finance/payouts', [DrNetworkFinanceController::class, 'storePayout'])->name('admin.dr-networks.finance.payouts.store');
+
             Route::post('products/step-1', [ProductStepController::class, 'step1'])->name('admin.products.step1');
             Route::post('products/step-2', [ProductStepController::class, 'step2'])->name('admin.products.step2');
             Route::post('products/step-3', [ProductStepController::class, 'step3'])->name('admin.products.step3');

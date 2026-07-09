@@ -32,10 +32,15 @@ class DrNetworkAssignmentService
         ]);
 
         $existing = DrNetworkFlowRun::query()
+            ->with('flowDefinition')
             ->where('order_id', $order->id)
             ->first();
 
         if ($existing) {
+            if ($existing->flowDefinition && $order->payment_status !== 'paid') {
+                $order = $this->applyFlowFeesToOrder($order, $existing->flowDefinition);
+            }
+
             Log::channel('dr_network')->info('Existing Dr Network flow run found; assignment skipped.', [
                 'order_id' => $order->id,
                 'flow_run_id' => $existing->id,
@@ -118,7 +123,11 @@ class DrNetworkAssignmentService
                 'dr_network_id' => $network->id,
                 'flow_id' => $flow->id,
                 'flow_key' => $flow->flow_key,
+                'network_fee_amount' => $flow->network_fee_amount,
+                'patient_fee_amount' => $flow->patient_fee_amount,
             ]);
+
+            $feeSnapshot = $this->feeSnapshotForFlow($order, $flow);
 
             $order->update([
                 'state_code' => strtoupper($stateCode),
@@ -126,6 +135,7 @@ class DrNetworkAssignmentService
                 'network_flow_id' => $flow->id,
                 'network_flow_key' => $flow->flow_key,
                 'network_product_identifier' => $productMapping->external_service_id,
+                ...$feeSnapshot,
             ]);
 
             Log::channel('dr_network')->info('Dr Network routing assigned to order.', [
@@ -134,6 +144,8 @@ class DrNetworkAssignmentService
                 'flow_id' => $flow->id,
                 'flow_key' => $flow->flow_key,
                 'external_service_id' => $productMapping->external_service_id,
+                'dr_network_fee_amount' => $feeSnapshot['dr_network_fee_amount'],
+                'dr_network_patient_fee_amount' => $feeSnapshot['dr_network_patient_fee_amount'],
             ]);
 
             return $order->fresh();
@@ -236,6 +248,40 @@ class DrNetworkAssignmentService
             'service_key' => $mapping->external_service_key,
             'session_type' => $sessionType,
         ], fn (mixed $value): bool => $value !== null && $value !== '');
+    }
+
+    private function applyFlowFeesToOrder(Order $order, NetworkFlowDefinition $flow): Order
+    {
+        if ($order->payment_status === 'paid') {
+            return $order->fresh();
+        }
+
+        $order->update($this->feeSnapshotForFlow($order, $flow));
+
+        return $order->fresh();
+    }
+
+    private function feeSnapshotForFlow(Order $order, NetworkFlowDefinition $flow): array
+    {
+        $previousPatientFee = round((float) ($order->dr_network_patient_fee_amount ?? 0), 2);
+        $patientFee = round((float) ($flow->patient_fee_amount ?? 0), 2);
+        $networkFee = round((float) ($flow->network_fee_amount ?? 0), 2);
+
+        $baseAmount = $this->replacePatientFee((float) ($order->base_amount ?? 0), $previousPatientFee, $patientFee);
+        $finalAmount = $this->replacePatientFee((float) ($order->final_amount ?? $order->price ?? 0), $previousPatientFee, $patientFee);
+
+        return [
+            'dr_network_fee_amount' => $networkFee,
+            'dr_network_patient_fee_amount' => $patientFee,
+            'base_amount' => $baseAmount,
+            'final_amount' => $finalAmount,
+            'price' => $finalAmount,
+        ];
+    }
+
+    private function replacePatientFee(float $amount, float $previousPatientFee, float $patientFee): float
+    {
+        return max(0, round($amount - $previousPatientFee + $patientFee, 2));
     }
 
     private function flowForOrder(Order $order, int $networkId, NetworkFlowDefinition $resolvedFlow): NetworkFlowDefinition
