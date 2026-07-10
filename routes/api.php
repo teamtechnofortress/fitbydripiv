@@ -450,6 +450,7 @@ Route::prefix('v1')->group(function () {
 
         // CMS Admin Routes
         Route::prefix('cms/admin')->group(function () {
+            Route::get('order-stats', [CmsAdminController::class, 'getOrderStats']);
             Route::get('categories', [CmsAdminController::class, 'getCategories']);
             Route::post('categories', [CmsAdminController::class, 'saveCategory']);
             Route::delete('categories/{id}', [CmsAdminController::class, 'deleteCategory']);
