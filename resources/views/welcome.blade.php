@@ -8,7 +8,7 @@
   <title>FitByDrip Web Application</title>
   <link rel="stylesheet" type="text/css" href="/loader.css" />
   <script type="module" crossorigin src="/assets/index.d5199015.js"></script>
-  <link rel="stylesheet" href="/assets/index.e82a1d16.css">
+  <link rel="stylesheet" href="/assets/index.285901ae.css">
 </head> 
 
 <body>
