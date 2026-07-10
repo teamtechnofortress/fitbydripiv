@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
+use App\Models\DrNetworkFlowRun;
 use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -19,6 +21,9 @@ class CmsAdminController extends Controller
             'date_from' => ['sometimes', 'nullable', 'date'],
             'date_to' => ['sometimes', 'nullable', 'date'],
             'product_id' => ['sometimes', 'nullable', 'uuid', 'exists:products,id'],
+            'dr_network_id' => ['sometimes', 'nullable', 'integer', 'exists:dr_networks,id'],
+            'flow_status' => ['sometimes', 'nullable', Rule::in(DrNetworkFlowRun::STATUSES)],
+            'include_zero_products' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'nullable', 'string', 'max:50'],
             'payment_status' => ['sometimes', 'nullable', 'string', 'max:50'],
         ]);
@@ -27,7 +32,10 @@ class CmsAdminController extends Controller
 
         $summary = $this->orderStatsSummary(clone $baseQuery);
         $totalSold = (int) $summary['sold_orders'];
-        $productStats = $this->productOrderStats(clone $baseQuery, $totalSold);
+        $productStats = $this->productOrderStats($validated, $totalSold);
+        $chartStats = $productStats
+            ->filter(fn (array $product): bool => $product['sold_orders'] > 0)
+            ->values();
 
         return response()->json([
             'success' => true,
@@ -36,17 +44,21 @@ class CmsAdminController extends Controller
                     'date_from' => $validated['date_from'] ?? null,
                     'date_to' => $validated['date_to'] ?? null,
                     'product_id' => $validated['product_id'] ?? null,
+                    'dr_network_id' => $validated['dr_network_id'] ?? null,
+                    'flow_status' => $validated['flow_status'] ?? null,
+                    'include_zero_products' => (bool) ($validated['include_zero_products'] ?? true),
                     'status' => $validated['status'] ?? null,
                     'payment_status' => $validated['payment_status'] ?? null,
                 ],
                 'summary' => $summary,
                 'status_counts' => $this->groupedOrderCounts(clone $baseQuery, 'status'),
                 'payment_status_counts' => $this->groupedOrderCounts(clone $baseQuery, 'payment_status'),
+                'dr_network_flow_status_counts' => $this->groupedFlowStatusCounts(clone $baseQuery),
                 'product_sales' => $productStats,
                 'chart' => [
-                    'labels' => $productStats->pluck('product_name')->values(),
-                    'sold_counts' => $productStats->pluck('sold_orders')->values(),
-                    'percentages' => $productStats->pluck('sold_percentage')->values(),
+                    'labels' => $chartStats->pluck('product_name')->values(),
+                    'sold_counts' => $chartStats->pluck('sold_orders')->values(),
+                    'percentages' => $chartStats->pluck('sold_percentage')->values(),
                 ],
             ],
         ]);
@@ -140,6 +152,10 @@ class CmsAdminController extends Controller
             ->when(! empty($filters['date_from']), fn ($query) => $query->where('orders.created_at', '>=', $filters['date_from']))
             ->when(! empty($filters['date_to']), fn ($query) => $query->where('orders.created_at', '<=', $filters['date_to']))
             ->when(! empty($filters['product_id']), fn ($query) => $query->where('orders.product_id', $filters['product_id']))
+            ->when(! empty($filters['dr_network_id']), fn ($query) => $query->where('orders.dr_network_id', $filters['dr_network_id']))
+            ->when(! empty($filters['flow_status']), function ($query) use ($filters): void {
+                $query->whereHas('flowRun', fn ($flowRunQuery) => $flowRunQuery->where('status', $filters['flow_status']));
+            })
             ->when(! empty($filters['status']), fn ($query) => $query->where('orders.status', $filters['status']))
             ->when(! empty($filters['payment_status']), fn ($query) => $query->where('orders.payment_status', $filters['payment_status']));
     }
@@ -184,22 +200,54 @@ class CmsAdminController extends Controller
             ->values();
     }
 
-    private function productOrderStats($query, int $totalSold)
+    private function groupedFlowStatusCounts($query)
     {
         return $query
-            ->leftJoin('products', 'products.id', '=', 'orders.product_id')
+            ->leftJoin('dr_network_flow_runs', 'dr_network_flow_runs.order_id', '=', 'orders.id')
+            ->selectRaw("COALESCE(dr_network_flow_runs.status, 'not_started') as status_key")
+            ->selectRaw('COUNT(*) as count')
+            ->groupByRaw("COALESCE(dr_network_flow_runs.status, 'not_started')")
+            ->orderBy('status_key')
+            ->get()
+            ->map(fn ($row): array => [
+                'key' => $row->status_key,
+                'label' => Str::of($row->status_key)->replace('_', ' ')->title()->toString(),
+                'count' => (int) $row->count,
+            ])
+            ->values();
+    }
+
+    private function productOrderStats(array $filters, int $totalSold)
+    {
+        $includeZeroProducts = (bool) ($filters['include_zero_products'] ?? true);
+
+        $orderStats = $this->filteredOrdersQuery($filters)
             ->select('orders.product_id')
-            ->selectRaw("COALESCE(products.name, 'Unknown Product') as product_name")
-            ->selectRaw('products.slug as product_slug')
             ->selectRaw('COUNT(*) as total_orders')
             ->selectRaw("SUM(CASE WHEN orders.status = 'completed' THEN 1 ELSE 0 END) as completed_orders")
             ->selectRaw("SUM(CASE WHEN orders.status = 'pending' THEN 1 ELSE 0 END) as pending_orders")
             ->selectRaw("SUM(CASE WHEN orders.payment_status = 'failed' THEN 1 ELSE 0 END) as failed_orders")
             ->selectRaw("SUM(CASE WHEN orders.payment_status = 'paid' OR orders.status = 'completed' THEN 1 ELSE 0 END) as sold_orders")
             ->selectRaw("COALESCE(SUM(CASE WHEN orders.payment_status = 'paid' OR orders.status = 'completed' THEN COALESCE(orders.final_amount, orders.price, 0) ELSE 0 END), 0) as gross_revenue")
-            ->groupBy('orders.product_id', 'products.name', 'products.slug')
-            ->orderByDesc('sold_orders')
-            ->orderBy('product_name')
+            ->groupBy('orders.product_id');
+
+        return Product::query()
+            ->select('products.id as product_id')
+            ->select('products.name as product_name')
+            ->select('products.slug as product_slug')
+            ->selectRaw('COALESCE(order_stats.total_orders, 0) as total_orders')
+            ->selectRaw('COALESCE(order_stats.completed_orders, 0) as completed_orders')
+            ->selectRaw('COALESCE(order_stats.pending_orders, 0) as pending_orders')
+            ->selectRaw('COALESCE(order_stats.failed_orders, 0) as failed_orders')
+            ->selectRaw('COALESCE(order_stats.sold_orders, 0) as sold_orders')
+            ->selectRaw('COALESCE(order_stats.gross_revenue, 0) as gross_revenue')
+            ->leftJoinSub($orderStats, 'order_stats', function ($join): void {
+                $join->on('products.id', '=', 'order_stats.product_id');
+            })
+            ->when(! empty($filters['product_id']), fn ($query) => $query->where('products.id', $filters['product_id']))
+            ->when(! $includeZeroProducts, fn ($query) => $query->whereRaw('COALESCE(order_stats.total_orders, 0) > 0'))
+            ->orderByRaw('COALESCE(order_stats.sold_orders, 0) DESC')
+            ->orderBy('products.name')
             ->get()
             ->map(fn ($row): array => [
                 'product_id' => $row->product_id,
