@@ -266,6 +266,8 @@ Route::prefix('v1')->group(function () {
             Route::post('dr-networks/{network}/webhook-log/{event}/replay', [DrNetworkAdminController::class, 'replayWebhook'])->name('admin.dr-networks.webhook-log.replay');
             Route::get('dr-networks/{network}/cases', [DrNetworkAdminController::class, 'cases'])->name('admin.dr-networks.cases.index');
             Route::get('dr-networks/{network}/cases/{order}', [DrNetworkAdminController::class, 'showCase'])->name('admin.dr-networks.cases.show');
+            Route::get('dr-networks/{network}/cases/{order}/documents/{document}/preview', [DrNetworkAdminController::class, 'previewCaseDocument'])->name('admin.dr-networks.cases.documents.preview');
+            Route::get('dr-networks/{network}/cases/{order}/documents/{document}/download', [DrNetworkAdminController::class, 'downloadCaseDocument'])->name('admin.dr-networks.cases.documents.download');
             Route::get('dr-networks/{network}/flow-runs', [DrNetworkAdminController::class, 'flowRuns'])->name('admin.dr-networks.flow-runs.index');
             Route::get('dr-networks/{network}/flow-runs/{run}', [DrNetworkAdminController::class, 'showFlowRun'])->name('admin.dr-networks.flow-runs.show');
             Route::post('dr-networks/{network}/flow-runs/{run}/retry-poll', [DrNetworkAdminController::class, 'retryFlowRunPoll'])->name('admin.dr-networks.flow-runs.retry-poll');

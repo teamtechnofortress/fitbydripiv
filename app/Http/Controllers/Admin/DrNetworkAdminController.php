@@ -17,6 +17,7 @@ use App\Models\NetworkIntakeQuestionSet;
 use App\Models\NetworkProductMapping;
 use App\Models\NetworkStateMapping;
 use App\Models\Order;
+use App\Models\OrderDocument;
 use App\Models\Product;
 use App\Models\State;
 use App\Services\DrNetwork\Admin\ConfigAuditLogger;
@@ -30,6 +31,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use RuntimeException;
 use Throwable;
@@ -1473,6 +1476,22 @@ class DrNetworkAdminController extends Controller
         return response()->json($this->drNetworkCasePayload($network, $order));
     }
 
+    public function previewCaseDocument(Request $request, DrNetwork $network, Order $order, OrderDocument $document)
+    {
+        $this->authorizeRead($request);
+        $this->assertCaseDocumentBelongsToNetworkOrder($network, $order, $document);
+
+        return $this->streamCaseDocument($document, 'inline');
+    }
+
+    public function downloadCaseDocument(Request $request, DrNetwork $network, Order $order, OrderDocument $document)
+    {
+        $this->authorizeRead($request);
+        $this->assertCaseDocumentBelongsToNetworkOrder($network, $order, $document);
+
+        return $this->streamCaseDocument($document, 'attachment');
+    }
+
     public function showFlowRun(Request $request, DrNetwork $network, DrNetworkFlowRun $run): JsonResponse
     {
         $this->authorizeRead($request);
@@ -2122,7 +2141,20 @@ class DrNetworkAdminController extends Controller
                     'category' => $document->documentType->category,
                 ] : null,
                 'original_filename' => $document->original_filename,
+                'download_filename' => $this->caseDocumentFilename($document),
                 'file_path' => $document->file_path,
+                'preview_url' => route('admin.dr-networks.cases.documents.preview', [
+                    'network' => $network->id,
+                    'order' => $order->id,
+                    'document' => $document->id,
+                ]),
+                'download_url' => route('admin.dr-networks.cases.documents.download', [
+                    'network' => $network->id,
+                    'order' => $order->id,
+                    'document' => $document->id,
+                ]),
+                'can_preview' => true,
+                'can_download' => true,
                 'mime_type' => $document->mime_type,
                 'status' => $document->status,
                 'metadata' => $document->metadata,
@@ -2198,6 +2230,98 @@ class DrNetworkAdminController extends Controller
 
         return collect($this->caseFlowStepsPayload($order))
             ->firstWhere('step_key', $currentStepKey);
+    }
+
+    private function assertCaseDocumentBelongsToNetworkOrder(DrNetwork $network, Order $order, OrderDocument $document): void
+    {
+        if (
+            (int) $order->dr_network_id !== (int) $network->id
+            || (int) $document->order_id !== (int) $order->id
+        ) {
+            abort(404);
+        }
+    }
+
+    private function streamCaseDocument(OrderDocument $document, string $disposition)
+    {
+        $document->loadMissing(['order.patient', 'documentType']);
+
+        if (! Storage::exists($document->file_path)) {
+            Log::warning('Dr Network case document stream failed: file missing.', [
+                'document_id' => $document->id,
+                'order_id' => $document->order_id,
+                'file_path' => $document->file_path,
+                'disposition' => $disposition,
+            ]);
+
+            abort(response()->json(['message' => 'Document file not found.'], 404));
+        }
+
+        $filename = $this->caseDocumentFilename($document);
+        $headers = array_filter([
+            'Content-Type' => $document->mime_type,
+        ]);
+
+        Log::info('Dr Network case document stream requested.', [
+            'document_id' => $document->id,
+            'order_id' => $document->order_id,
+            'patient_email' => $document->order?->patient?->email,
+            'document_type_key' => $document->documentType?->key,
+            'original_filename' => $document->original_filename,
+            'resolved_filename' => $filename,
+            'file_path' => $document->file_path,
+            'mime_type' => $document->mime_type,
+            'disposition' => $disposition,
+        ]);
+
+        if ($disposition === 'attachment') {
+            return Storage::download($document->file_path, $filename, $headers);
+        }
+
+        return Storage::response($document->file_path, $filename, $headers, 'inline');
+    }
+
+    private function caseDocumentFilename(OrderDocument $document): string
+    {
+        $document->loadMissing(['order.patient', 'documentType']);
+
+        $patientEmail = $this->safeFilenamePart($document->order?->patient?->email ?? 'patient');
+        $documentType = $this->safeFilenamePart(
+            $document->documentType?->key
+                ?? $document->documentType?->name
+                ?? 'document'
+        );
+        $extension = $this->caseDocumentExtension($document);
+
+        return "{$patientEmail}_{$documentType}.{$extension}";
+    }
+
+    private function caseDocumentExtension(OrderDocument $document): string
+    {
+        $originalExtension = pathinfo((string) $document->original_filename, PATHINFO_EXTENSION);
+        $storedExtension = pathinfo((string) $document->file_path, PATHINFO_EXTENSION);
+        $extension = strtolower($originalExtension ?: $storedExtension);
+
+        if ($extension !== '') {
+            return $extension;
+        }
+
+        return match ($document->mime_type) {
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'bin',
+        };
+    }
+
+    private function safeFilenamePart(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9@._-]+/', '-', $value) ?: '';
+        $value = trim($value, '-_.');
+
+        return $value !== '' ? $value : 'document';
     }
 
     private function humanizeStepKey(string $stepKey): string

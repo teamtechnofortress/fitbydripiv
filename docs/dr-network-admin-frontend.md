@@ -950,6 +950,32 @@ Open a case from the list with:
 GET /api/v1/admin/dr-networks/{networkId}/cases/{order_id}
 ```
 
+Uploaded documents in the detail response include authenticated URLs:
+
+```json
+{
+  "documents": [
+    {
+      "id": 12,
+      "document_type_id": 1,
+      "document_type": {
+        "id": 1,
+        "key": "government_id",
+        "name": "Government ID",
+        "category": "identity"
+      },
+      "original_filename": "license.jpg",
+      "mime_type": "image/jpeg",
+      "status": "verified",
+      "preview_url": "https://example.test/api/v1/admin/dr-networks/1/cases/123/documents/12/preview",
+      "download_url": "https://example.test/api/v1/admin/dr-networks/1/cases/123/documents/12/download"
+    }
+  ]
+}
+```
+
+Use `preview_url` for iframe/image/blob preview and `download_url` for downloading. Do not build URLs from `file_path`; uploaded order documents are private storage files and require admin auth.
+
 Recommended patient progress display:
 - Use `flow.current_step` for the highlighted current step.
 - Use `flow.steps` for the full progress tracker, because it includes every configured flow definition step, even if the runtime has not created a `flow_run_step` row for it yet.
