@@ -35,6 +35,7 @@ use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\PatientIntakeController;
+use App\Http\Controllers\Admin\DocumentConversionController;
 use App\Http\Controllers\Admin\OrderAdminController;
 use App\Http\Controllers\Admin\SubscriptionAdminController;
 use App\Http\Controllers\Admin\WebhookAdminController;
@@ -214,6 +215,8 @@ Route::prefix('v1')->group( function(){
             Route::get('content/layout', [ContentAdminController::class, 'getGlobalSections']);
             Route::post('content/layout', [ContentAdminController::class, 'saveGlobalSection']);
 
+            Route::post('content/document-imports', [DocumentConversionController::class, 'store'])
+                ->name('admin.content.document-imports.store');
             Route::get('content/pages', [ContentAdminController::class, 'getPages']);
             Route::get('content/pages/{id}', [ContentAdminController::class, 'getPage']);
             Route::post('content/pages', [ContentAdminController::class, 'savePage']);
