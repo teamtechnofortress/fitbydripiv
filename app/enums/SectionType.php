@@ -6,6 +6,7 @@ enum SectionType: string
 {
     case DEFAULT = 'default';
     case CONTENT_BLOCK = 'content_block';
+    case RICH_TEXT = 'rich_text';
     case SPACER = 'spacer';
     case PRODUCT_GRID = 'product_grid';
     case PRODUCT_DETAILS = 'product_details';

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\enums\SectionType;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\SectionItem;
@@ -150,7 +151,7 @@ class ContentAdminController extends Controller
             'id' => 'sometimes|uuid|exists:page_sections,id',
             'page_id' => 'required|uuid|exists:pages,id',
             'section_key' => 'required|string|max:150',
-            'type' => 'nullable|string|max:100',
+            'type' => 'nullable|string|in:' . implode(',', $this->allowedSectionTypes()),
             'title' => 'nullable|string|max:255',
             'subtitle' => 'nullable|string|max:255',
             'content' => 'nullable|array',
@@ -174,7 +175,7 @@ class ContentAdminController extends Controller
 
         $validated = $request->validate([
             'section_key' => 'required|string|max:150',
-            'type' => 'nullable|string|max:100',
+            'type' => 'nullable|string|in:' . implode(',', $this->allowedSectionTypes()),
             'title' => 'nullable|string|max:255',
             'subtitle' => 'nullable|string|max:255',
             'content' => 'nullable|array',
@@ -303,6 +304,14 @@ class ContentAdminController extends Controller
         if ($key === 'footer') {
             $this->validateFooterConfig($config);
         }
+    }
+
+    protected function allowedSectionTypes(): array
+    {
+        return array_map(
+            fn (SectionType $type): string => $type->value,
+            SectionType::cases()
+        );
     }
 
     protected function validateHeaderConfig(array $config): void

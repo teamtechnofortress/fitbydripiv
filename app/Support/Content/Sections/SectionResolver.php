@@ -13,6 +13,7 @@ use App\Support\Content\Sections\Handlers\PdfLibrarySection;
 use App\Support\Content\Sections\Handlers\ProcessSection;
 use App\Support\Content\Sections\Handlers\ProductGridSection;
 use App\Support\Content\Sections\Handlers\ProductDetailsSection;
+use App\Support\Content\Sections\Handlers\RichTextSection;
 use App\Support\Content\Sections\Handlers\SectionHeaderSection;
 use App\Support\Content\Sections\Handlers\SpacerSection;
 use App\Support\Content\Sections\Handlers\TelehealthCtaSection;
@@ -33,6 +34,7 @@ class SectionResolver
     {
         return match ($section->type) {
             SectionType::CONTENT_BLOCK => ContentBlockSection::handle($section),
+            SectionType::RICH_TEXT => RichTextSection::handle($section),
             SectionType::SPACER => SpacerSection::handle($section),
             SectionType::PRODUCT_GRID => ProductGridSection::handle($section, $context),
             SectionType::PRODUCT_DETAILS => ProductDetailsSection::handle($section, $context),

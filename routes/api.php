@@ -44,6 +44,7 @@ use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\DocumentConversionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -328,6 +329,7 @@ Route::prefix('v1')->group(function () {
             Route::post('content/section-items', [ContentAdminController::class, 'saveSectionItem']);
             Route::delete('content/section-items/{id}', [ContentAdminController::class, 'deleteSectionItem']);
             Route::post('content/sections/{sectionId}/items/reorder', [ContentAdminController::class, 'reorderSectionItems']);
+            Route::post('content/document-imports', [DocumentConversionController::class, 'store'])->name('admin.content.document-imports.store');
         });
 
         // Staff #########################
