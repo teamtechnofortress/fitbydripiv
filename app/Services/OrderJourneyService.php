@@ -13,6 +13,19 @@ class OrderJourneyService
 
         $flowRun = $order->flowRun;
 
+        if (! $order->patient_id) {
+            return $this->response(
+                order: $order,
+                phase: 'patient_info',
+                currentStepKey: 'patient_info',
+                isReady: true,
+                journeyStatus: 'patient_info_required',
+                nextAction: 'collect_patient_info',
+                nextActionKey: 'patient_info',
+                message: 'Patient information is required before checkout.'
+            );
+        }
+
         if ($flowRun) {
             return $this->flowRunResponse($order, $flowRun);
         }

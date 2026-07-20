@@ -79,7 +79,7 @@ class CheckoutService
         }
 
         if (! $order->patient_id) {
-            abort(422, 'Order is not linked to a patient intake yet.');
+            abort(422, 'Order is not linked to patient information yet.');
         }
 
         Log::info('Checkout session will be created for existing order', [
