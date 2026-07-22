@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             GeneralFaqPageSeeder::class,
             InstructionsPageSeeder::class,
             JurisdictionPageSeeder::class,
+            LegalPageSeeder::class,
             PenInstructionsPageSeeder::class,
             PrivacyPageSeeder::class,
             ProductSelectionPageSeeder::class,
