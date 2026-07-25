@@ -145,6 +145,10 @@ class NetworkIntakeQuestion extends Model
 
     public function isHiddenFromPatient(): bool
     {
-        return $this->isAutoFilled() || (bool) ($this->metadata['frontend_hidden'] ?? false);
+        if ((bool) ($this->metadata['frontend_hidden'] ?? false)) {
+            return true;
+        }
+
+        return $this->isAutoFilled() && ! (bool) ($this->metadata['frontend_visible'] ?? false);
     }
 }

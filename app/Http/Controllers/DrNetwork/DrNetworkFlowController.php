@@ -82,7 +82,8 @@ class DrNetworkFlowController extends Controller
                 $order->dr_network_id,
                 $order->network_flow_key,
                 $order->state_code,
-                $order->product?->slug
+                $order->product?->slug,
+                $order->id
             );
         }
 

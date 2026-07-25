@@ -43,14 +43,14 @@ class OlaHealthSeeder extends Seeder
     {
         return [
             // Runtime data
-            'dr_network_flow_run_steps',
-            'dr_network_flow_runs',
+            // 'dr_network_flow_run_steps',
+            // 'dr_network_flow_runs',
             'dr_network_webhook_events',
-            'dr_network_transactions',
-            'dr_network_payouts',
-            'consultation_records',
-            'order_intake_answers',
-            'order_documents',
+            // 'dr_network_transactions',
+            // 'dr_network_payouts',
+            // 'consultation_records',
+            // 'order_intake_answers',
+            // 'order_documents',
 
             // Network configuration
             'network_intake_questions',

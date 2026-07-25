@@ -173,9 +173,48 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 networkValidation: $this->blockOnEquals('glp1_telehealth_consent', 'no', 'glp1_telehealth_declined', 'Telehealth consent is required. Please seek in-person care.', 'refer_out'),
                 metadata: ['protocol_section' => 'GLP-1 Initial Q1']
             ),
-            $this->question('glp1_height_feet', 'Height - feet', 2, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['unit' => 'ft']),
-            $this->question('glp1_height_inches', 'Height - inches', 3, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['unit' => 'in']),
-            $this->question('glp1_weight_lbs', 'Current weight in pounds', 4, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['unit' => 'lbs']),
+            $this->question(
+                'glp1_height_feet',
+                'Height - feet',
+                2,
+                NetworkIntakeQuestion::INPUT_NUMBER,
+                metadata: [
+                    'unit' => 'ft',
+                    'ui_component' => 'bmi_calculator',
+                    'ui_page_key' => 'body_metrics',
+                    'ui_group_key' => 'glp1_body_metrics',
+                    'ui_group_label' => 'Body metrics',
+                    'ui_group_role' => 'height_feet',
+                ]
+            ),
+            $this->question(
+                'glp1_height_inches',
+                'Height - inches',
+                3,
+                NetworkIntakeQuestion::INPUT_NUMBER,
+                metadata: [
+                    'unit' => 'in',
+                    'ui_component' => 'bmi_calculator',
+                    'ui_page_key' => 'body_metrics',
+                    'ui_group_key' => 'glp1_body_metrics',
+                    'ui_group_label' => 'Body metrics',
+                    'ui_group_role' => 'height_inches',
+                ]
+            ),
+            $this->question(
+                'glp1_weight_lbs',
+                'Current weight in pounds',
+                4,
+                NetworkIntakeQuestion::INPUT_NUMBER,
+                metadata: [
+                    'unit' => 'lbs',
+                    'ui_component' => 'bmi_calculator',
+                    'ui_page_key' => 'body_metrics',
+                    'ui_group_key' => 'glp1_body_metrics',
+                    'ui_group_label' => 'Body metrics',
+                    'ui_group_role' => 'weight_lbs',
+                ]
+            ),
             $this->question(
                 'glp1_bmi',
                 'BMI',
@@ -188,16 +227,29 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                             'rule_key' => 'glp1_bmi_under_20',
                             'reason' => 'bmi_not_eligible',
                             'hard_stop_type' => 'refer_out',
-                            'message' => 'Based on your height and weight, your calculated BMI does not meet the eligibility criteria for this treatment through this telehealth program.',                            'conditions' => [
+                            'message' => 'Based on your height and weight, your calculated BMI does not meet the eligibility criteria for this treatment through this telehealth program.',
+                            'conditions' => [
                                 ['source' => 'answers.glp1_bmi', 'operator' => 'less_than', 'value' => 20],
                             ],
                         ],
                     ],
                 ],
                 metadata: [
-                    'frontend_hidden' => true,
+                    'frontend_visible' => true,
+                    'read_only' => true,
+                    'unit' => 'bmi',
+                    'ui_component' => 'bmi_calculator',
+                    'ui_page_key' => 'body_metrics',
+                    'ui_group_key' => 'glp1_body_metrics',
+                    'ui_group_label' => 'Body metrics',
+                    'ui_group_role' => 'bmi',
                     'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CALCULATED_BMI,
                     'calculation_required' => true,
+                    'calculated_from' => [
+                        'glp1_height_feet',
+                        'glp1_height_inches',
+                        'glp1_weight_lbs',
+                    ],
                     'standard_protocol_min_bmi' => 23,
                     'microdosing_bmi_range' => ['min' => 20, 'max' => 22.9],
                 ]
@@ -498,7 +550,13 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
 
     private function glutathioneMicB12InitialQuestions(string $productSlug): array
     {
-        return [
+        $therapyName = match ($productSlug) {
+            'b12-injection' => 'B12 therapy',
+            'glutathione' => 'Glutathione therapy',
+            default => 'wellness therapy',
+        };
+
+        $questions = [
             $this->question('wellness_goals', 'What are the main health concerns or goals you want to address?', 1, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
                 'fatigue_low_energy' => 'Fatigue or low energy',
                 'brain_fog_focus' => 'Brain fog or poor focus',
@@ -526,18 +584,16 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'cancer_current_past',
                     'liver_kidney_disease',
                     'pregnancy_breastfeeding',
-                ], 'wellness_global_contraindication', 'This condition prevents automatic progression for Glutathione/MIC/B12 therapy.'),
+                ], 'wellness_global_contraindication', "This condition prevents automatic progression for {$therapyName}."),
                 metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]
             ),
-            $this->question('wellness_requested_substances', 'Which therapies are you seeking to use?', 3, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
-                'glutathione' => 'Glutathione',
-                'mic' => 'MIC',
-                'b12' => 'B12',
-            ]), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug, 'system_gap' => 'Current product mapping selects one external service, but protocol supports multiple selected substances and partial substance approval.']),
-            $this->question(
+        ];
+
+        if ($productSlug === 'glutathione') {
+            $questions[] = $this->question(
                 'wellness_glutathione_condition_screen',
                 'For Glutathione use, do you currently have or have you ever had any of the following?',
-                4,
+                3,
                 NetworkIntakeQuestion::INPUT_MULTISELECT,
                 $this->options([
                     'asthma' => 'Asthma',
@@ -546,31 +602,16 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'chronic_active_infection' => 'Chronic or active infections such as Lyme or EBV',
                     'none' => 'None of these apply to me',
                 ]),
-                isConditional: true,
-                conditionRules: [['source' => 'answers.wellness_requested_substances', 'operator' => 'equals', 'value' => 'glutathione']],
                 networkValidation: $this->blockOnAnySelectedExceptNone('wellness_glutathione_condition_screen', ['asthma', 'nitrates', 'sulfa_allergy', 'chronic_active_infection'], 'glutathione_contraindication', 'One or more answers blocks Glutathione therapy through this flow.', 'provider_review_required'),
-                metadata: ['protocol' => 'glutathione_mic_b12_initial', 'substance' => 'glutathione', 'system_gap' => 'Protocol calls for Glutathione-only blocking while allowing other selected substances; current hard stop fails the whole flow.']
-            ),
-            $this->question(
-                'wellness_mic_condition_screen',
-                'For MIC use, do you have or have you ever had any of the following?',
-                5,
-                NetworkIntakeQuestion::INPUT_MULTISELECT,
-                $this->options([
-                    'elevated_homocysteine' => 'Elevated homocysteine levels',
-                    'g6pd_deficiency' => 'G6PD deficiency',
-                    'methylation_defect' => 'Methylation defects such as MTHFR',
-                    'none' => 'None of these apply to me',
-                ]),
-                isConditional: true,
-                conditionRules: [['source' => 'answers.wellness_requested_substances', 'operator' => 'equals', 'value' => 'mic']],
-                networkValidation: $this->blockOnAnySelectedExceptNone('wellness_mic_condition_screen', ['elevated_homocysteine', 'g6pd_deficiency', 'methylation_defect'], 'mic_contraindication', 'One or more answers blocks MIC therapy through this flow.', 'provider_review_required'),
-                metadata: ['protocol' => 'glutathione_mic_b12_initial', 'substance' => 'mic', 'system_gap' => 'Protocol calls for MIC-only blocking while allowing other selected substances; current hard stop fails the whole flow.']
-            ),
-            $this->question(
+                metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug, 'substance' => 'glutathione']
+            );
+        }
+
+        if ($productSlug === 'b12-injection') {
+            $questions[] = $this->question(
                 'wellness_b12_condition_screen',
                 'For B12 use, do you have or have you ever had any of the following?',
-                6,
+                3,
                 NetworkIntakeQuestion::INPUT_MULTISELECT,
                 $this->options([
                     'cobalt_cobalamin_allergy' => 'Allergy to cobalt or cobalamin',
@@ -579,20 +620,21 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'polycythemia_vera' => 'Polycythemia Vera',
                     'none' => 'None of these apply to me',
                 ]),
-                isConditional: true,
-                conditionRules: [['source' => 'answers.wellness_requested_substances', 'operator' => 'equals', 'value' => 'b12']],
                 networkValidation: $this->blockOnAnySelectedExceptNone('wellness_b12_condition_screen', ['cobalt_cobalamin_allergy', 'hereditary_optic_neuropathy', 'elevated_hematocrit', 'polycythemia_vera'], 'b12_contraindication', 'One or more answers blocks B12 therapy through this flow.', 'provider_review_required'),
-                metadata: ['protocol' => 'glutathione_mic_b12_initial', 'substance' => 'b12', 'system_gap' => 'Protocol calls for B12-only blocking while allowing other selected substances; current hard stop fails the whole flow.']
-            ),
-            $this->question('wellness_current_medications', 'List any medications or supplements you currently take regularly.', 7, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_medication_allergies', 'List any medication allergies that you have.', 8, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_stress_level', 'How would you rate your stress level?', 9, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['low' => 'Low', 'moderate' => 'Moderate', 'high' => 'High', 'extreme' => 'Extreme']), metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_sleep_hours', 'How many hours of sleep do you get per night on average?', 10, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['under_5' => 'Less than 5', '5_6' => '5-6', '7_8' => '7-8', 'over_8' => 'More than 8']), metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_exercise_frequency', 'How often do you exercise?', 11, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['never' => 'Never', '1_2_week' => '1-2 times per week', '3_4_week' => '3-4 times per week', '5_plus_week' => '5 or more times per week']), metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_water_intake', 'How much water do you drink per day?', 12, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['under_32' => 'Less than 32 oz', '32_64' => '32-64 oz', '64_100' => '64-100 oz', '100_plus' => '100+ oz']), metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_alcohol_frequency', 'How often do you drink alcohol?', 13, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['never_rarely' => 'Never or rarely', '1_3_week' => '1-3 drinks per week', '4_6_week' => '4-6 drinks per week', 'more_than_7_week' => 'More than 7 drinks per week']), metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-            $this->question('wellness_provider_notes', 'Is there anything else you would like the provider to know?', 14, NetworkIntakeQuestion::INPUT_LONG_TEXT, isRequired: false, metadata: ['protocol' => 'glutathione_mic_b12_initial']),
-        ];
+                metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug, 'substance' => 'b12']
+            );
+        }
+
+        return array_merge($questions, [
+            $this->question('wellness_current_medications', 'List any medications or supplements you currently take regularly.', 4, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_medication_allergies', 'List any medication allergies that you have.', 5, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_stress_level', 'How would you rate your stress level?', 6, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['low' => 'Low', 'moderate' => 'Moderate', 'high' => 'High', 'extreme' => 'Extreme']), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_sleep_hours', 'How many hours of sleep do you get per night on average?', 7, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['under_5' => 'Less than 5', '5_6' => '5-6', '7_8' => '7-8', 'over_8' => 'More than 8']), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_exercise_frequency', 'How often do you exercise?', 8, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['never' => 'Never', '1_2_week' => '1-2 times per week', '3_4_week' => '3-4 times per week', '5_plus_week' => '5 or more times per week']), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_water_intake', 'How much water do you drink per day?', 9, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['under_32' => 'Less than 32 oz', '32_64' => '32-64 oz', '64_100' => '64-100 oz', '100_plus' => '100+ oz']), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_alcohol_frequency', 'How often do you drink alcohol?', 10, NetworkIntakeQuestion::INPUT_SELECT, $this->options(['never_rarely' => 'Never or rarely', '1_3_week' => '1-3 drinks per week', '4_6_week' => '4-6 drinks per week', 'more_than_7_week' => 'More than 7 drinks per week']), metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+            $this->question('wellness_provider_notes', 'Is there anything else you would like the provider to know?', 11, NetworkIntakeQuestion::INPUT_LONG_TEXT, isRequired: false, metadata: ['protocol' => 'glutathione_mic_b12_initial', 'product_slug' => $productSlug]),
+        ]);
     }
 
     private function question(

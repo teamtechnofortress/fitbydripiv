@@ -700,12 +700,13 @@ nested
 ```
 
 System-filled questions:
-- Use `metadata.frontend_hidden: true` plus `metadata.auto_fill`.
+- Use `metadata.frontend_hidden: true` plus `metadata.auto_fill` for fields that should stay server-only.
+- Use `metadata.frontend_visible: true` plus `metadata.read_only: true` when an auto-filled field should be shown to the patient as calculated output.
 - Supported `auto_fill` values: `current_date`, `patient_name`, `order_uuid`, `calculated_bmi`.
-- These questions are not returned in the patient-facing intake question payload.
-- The frontend must not submit answers for them; the backend writes them during intake answer submission.
+- Hidden auto-filled questions are not returned in the patient-facing intake question payload.
+- The frontend must not submit answers for auto-filled questions; the backend writes them during intake answer submission.
 - Current Ola GLP-1 seeder uses this for `glp1_signature_date`, which is auto-filled as the server's current date.
-- Current Ola GLP-1 seeder uses `calculated_bmi` for `glp1_bmi`. Frontend should render `glp1_height_feet` and `glp1_height_inches` as one grouped Height UI, render `glp1_weight_lbs` normally, and never render or submit `glp1_bmi`.
+- Current Ola GLP-1 seeder uses `ui_component: bmi_calculator`, `ui_page_key: body_metrics`, and `ui_group_key: glp1_body_metrics` to render `glp1_height_feet`, `glp1_height_inches`, `glp1_weight_lbs`, and read-only `glp1_bmi` on one body metrics page. `glp1_bmi` is auto-filled with `calculated_bmi` and includes `calculated_from` metadata for its source fields.
 
 Other endpoints:
 - `PATCH /questions/{question}`

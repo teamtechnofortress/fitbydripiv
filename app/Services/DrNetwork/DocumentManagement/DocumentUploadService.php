@@ -6,8 +6,10 @@ use App\Models\Order;
 use App\Models\OrderDocument;
 use App\Services\DrNetwork\Flow\FlowRunner;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 class DocumentUploadService
 {
@@ -26,19 +28,55 @@ class DocumentUploadService
 
         $path = Storage::putFile("orders/{$order->id}/documents", $file);
 
-        $document = OrderDocument::query()->create([
-            'order_id' => $order->id,
-            'document_type_id' => $documentTypeId,
-            'file_path' => $path,
-            'original_filename' => $file->getClientOriginalName(),
-            'mime_type' => $file->getMimeType(),
-            'status' => OrderDocument::STATUS_PENDING_VERIFICATION,
-        ]);
+        try {
+            $oldPaths = DB::transaction(function () use ($order, $documentTypeId, $file, $path): array {
+                $existingDocuments = OrderDocument::query()
+                    ->where('order_id', $order->id)
+                    ->where('document_type_id', $documentTypeId)
+                    ->latest('id')
+                    ->lockForUpdate()
+                    ->get();
 
-        $document->update([
-            'status' => OrderDocument::STATUS_VERIFIED,
-            'verified_at' => now(),
-        ]);
+                $oldPaths = $existingDocuments
+                    ->pluck('file_path')
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                $document = $existingDocuments->first();
+
+                $attributes = [
+                    'order_id' => $order->id,
+                    'document_type_id' => $documentTypeId,
+                    'file_path' => $path,
+                    'original_filename' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'status' => OrderDocument::STATUS_VERIFIED,
+                    'metadata' => null,
+                    'verified_at' => now(),
+                ];
+
+                if ($document) {
+                    $document->update($attributes);
+
+                    $existingDocuments
+                        ->skip(1)
+                        ->each(fn (OrderDocument $duplicate): bool => $duplicate->delete());
+                } else {
+                    OrderDocument::query()->create($attributes);
+                }
+
+                return $oldPaths;
+            });
+        } catch (Throwable $exception) {
+            Storage::delete($path);
+
+            throw $exception;
+        }
+
+        collect($oldPaths)
+            ->filter(fn (string $oldPath): bool => $oldPath !== $path)
+            ->each(fn (string $oldPath): bool => Storage::delete($oldPath));
 
         $validation = $this->validator->validate(
             $order->id,
