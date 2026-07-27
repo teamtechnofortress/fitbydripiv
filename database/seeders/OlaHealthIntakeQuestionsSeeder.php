@@ -48,7 +48,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     $flow,
                     $productSlug,
                     "ola_{$this->flowAlias($flowKey)}_glp1_{$productSlug}",
-                    "Ola Health - {$productName} Initial GLP-1 Questions",
+                    "{$productName} Initial GLP-1 Questions",
                     'glp1_initial'
                 );
 
@@ -61,7 +61,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     $flow,
                     $productSlug,
                     "ola_{$this->flowAlias($flowKey)}_nad_{$productSlug}",
-                    "Ola Health - {$productName} Initial Questions",
+                    "{$productName} Initial Questions",
                     'nad_initial'
                 );
 
@@ -74,7 +74,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     $flow,
                     $productSlug,
                     "ola_{$this->flowAlias($flowKey)}_wellness_{$productSlug}",
-                    "Ola Health - {$productName} Initial Questions",
+                    "{$productName} Initial Questions",
                     'glutathione_mic_b12_initial'
                 );
 
@@ -163,6 +163,8 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
 
     private function glp1InitialQuestions(string $productSlug): array
     {
+        $productName = $this->glp1ProductName($productSlug);
+
         $questions = [
             $this->question(
                 'glp1_telehealth_consent',
@@ -262,7 +264,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 $this->options([
                     'mtc_history' => 'Personal or family history of medullary thyroid carcinoma (MTC)',
                     'men2_history' => 'MEN2 or family history of MEN2',
-                    'glp1_allergy' => 'Known allergy or hypersensitivity to GLP-1 medications',
+                    'glp1_allergy' => 'Known allergy or hypersensitivity to GLP medications',
                     'type_1_diabetes' => 'Type 1 diabetes',
                     'poorly_controlled_type_2_diabetes' => 'Poorly controlled Type 2 diabetes',
                     'non_metformin_diabetes_meds' => 'Diabetes medications other than metformin',
@@ -310,7 +312,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 7,
                 NetworkIntakeQuestion::INPUT_RADIO,
                 $this->yesNoOptions(),
-                networkValidation: $this->blockOnEquals('glp1_substance_use_disorder', 'yes', 'glp1_substance_use_refer_out', 'This requires in-person care before GLP-1 treatment can proceed.', 'refer_out')
+                networkValidation: $this->blockOnEquals('glp1_substance_use_disorder', 'yes', 'glp1_substance_use_refer_out', 'This requires in-person care before GLP treatment can proceed.', 'refer_out')
             ),
             $this->question(
                 'glp1_alcohol_frequency',
@@ -334,7 +336,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 $this->yesNoOptions(),
                 isConditional: true,
                 conditionRules: $this->femaleCondition(),
-                networkValidation: $this->blockOnEquals('glp1_pregnant', 'yes', 'glp1_pregnancy_refer_out', 'GLP-1 medications cannot be used during pregnancy. Please seek in-person care.', 'refer_out')
+                networkValidation: $this->blockOnEquals('glp1_pregnant', 'yes', 'glp1_pregnancy_refer_out', 'GLP medications cannot be used during pregnancy. Please seek in-person care.', 'refer_out')
             ),
             $this->question(
                 'glp1_breastfeeding',
@@ -344,7 +346,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 $this->yesNoOptions(),
                 isConditional: true,
                 conditionRules: $this->femaleCondition(),
-                networkValidation: $this->blockOnEquals('glp1_breastfeeding', 'yes', 'glp1_breastfeeding_refer_out', 'GLP-1 medications should not be prescribed while breastfeeding through this flow.', 'refer_out')
+                networkValidation: $this->blockOnEquals('glp1_breastfeeding', 'yes', 'glp1_breastfeeding_refer_out', 'GLP medications should not be prescribed while breastfeeding through this flow.', 'refer_out')
             ),
             $this->question(
                 'glp1_planning_pregnancy',
@@ -354,7 +356,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 $this->yesNoOptions(),
                 isConditional: true,
                 conditionRules: $this->femaleCondition(),
-                networkValidation: $this->blockOnEquals('glp1_planning_pregnancy', 'yes', 'glp1_planned_pregnancy_refer_out', 'GLP-1 medications should be stopped before planned pregnancy. Please seek in-person care.', 'refer_out')
+                networkValidation: $this->blockOnEquals('glp1_planning_pregnancy', 'yes', 'glp1_planned_pregnancy_refer_out', 'GLP medications should be stopped before planned pregnancy. Please seek in-person care.', 'refer_out')
             ),
             $this->question('glp1_current_medications', 'List all medications you currently take, including supplements.', 12, NetworkIntakeQuestion::INPUT_LONG_TEXT),
             $this->question('glp1_allergies', 'List any allergies you have, including drug, food, or other allergies.', 13, NetworkIntakeQuestion::INPUT_LONG_TEXT),
@@ -382,17 +384,17 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 conditionRules: [['source' => 'answers.glp1_thyroid_medication', 'operator' => 'equals', 'value' => 'yes']],
                 networkValidation: $this->blockOnEquals('glp1_levothyroxine_acknowledgment', 'decline', 'glp1_levothyroxine_declined', 'You chose not to proceed after reviewing the thyroid medication acknowledgment.', 'refer_out')
             ),
-            $this->question('glp1_warfarin', 'Do you currently take warfarin or Coumadin?', 18, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
+            $this->question('glp1_warfarin', 'Do you currently take Warfarin or Coumadin?', 18, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
             $this->question(
                 'glp1_warfarin_acknowledgment',
                 'Warfarin acknowledgment',
                 19,
                 NetworkIntakeQuestion::INPUT_RADIO,
                 $this->acknowledgeDeclineOptions(),
-                helpText: 'GLP-1 medications may affect INR variability. Inform the clinician who manages warfarin.',
+                helpText: 'GLP medications may affect INR variability. Inform the clinician who manages Warfarin.',
                 isConditional: true,
                 conditionRules: [['source' => 'answers.glp1_warfarin', 'operator' => 'equals', 'value' => 'yes']],
-                networkValidation: $this->blockOnEquals('glp1_warfarin_acknowledgment', 'decline', 'glp1_warfarin_declined', 'You chose not to proceed after reviewing the warfarin acknowledgment.', 'refer_out')
+                networkValidation: $this->blockOnEquals('glp1_warfarin_acknowledgment', 'decline', 'glp1_warfarin_declined', 'You chose not to proceed after reviewing the Warfarin acknowledgment.', 'refer_out')
             ),
             $this->question(
                 'glp1_contraception_method',
@@ -409,7 +411,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 21,
                 NetworkIntakeQuestion::INPUT_CHECKBOX,
                 $this->options(['acknowledged' => 'I acknowledge that I have read and understand this information']),
-                helpText: 'GLP-1 medications may cause fetal harm. Use a reliable method of contraception while taking this medication.',
+                helpText: 'GLP medications may cause fetal harm. Use a reliable method of contraception while taking this medication.',
                 isConditional: true,
                 conditionRules: [['source' => 'answers.glp1_contraception_method', 'operator' => 'in', 'value' => ['none', 'barrier']]]
             ),
@@ -442,13 +444,13 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     ],
                 ]
             ),
-            $this->question('glp1_recent_use', 'Have you taken GLP-1 medications in the last 4 weeks?', 23, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
-            $this->question('glp1_recent_medication_photo', 'Upload photo(s) of your GLP-1 medication showing name, medication, dose, frequency, and fill date.', 24, NetworkIntakeQuestion::INPUT_FILE, isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Intake answer file inputs are not wired to order document storage yet.']),
+            $this->question('glp1_recent_use', "Are you currently using {$productName}, or have you taken it in the last 4 weeks?", 23, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
+            $this->question('glp1_recent_medication_photo', 'Upload photo(s) of your GLP medication showing name, medication, dose, frequency, and fill date.', 24, NetworkIntakeQuestion::INPUT_FILE, isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Intake answer file inputs are not wired to order document storage yet.']),
             $this->question('glp1_last_dose_date', 'What is the date of your last dose?', 25, NetworkIntakeQuestion::INPUT_DATE, isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
             $this->question('glp1_taken_as_prescribed', 'Have you been taking this medication as prescribed?', 26, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
             $this->question('glp1_non_prescribed_use_details', 'How have you been taking your medication?', 27, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.glp1_taken_as_prescribed', 'operator' => 'equals', 'value' => 'no']]),
-            $this->question('glp1_dose_preference', 'Please tell us your dose preference for this prescription.', 28, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
-            $this->question('glp1_medication_consent', 'GLP-1 medication acknowledgment and consent', 29, NetworkIntakeQuestion::INPUT_RADIO, $this->agreeDisagreeOptions(), networkValidation: $this->blockOnEquals('glp1_medication_consent', 'disagree', 'glp1_medication_consent_declined', 'GLP-1 medication consent is required to proceed.', 'refer_out')),
+            $this->question('glp1_dose_preference', 'How would you like to continue your dosing plan for this prescription?', 28, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
+            $this->question('glp1_medication_consent', 'GLP medication acknowledgment and consent', 29, NetworkIntakeQuestion::INPUT_RADIO, $this->agreeDisagreeOptions(), networkValidation: $this->blockOnEquals('glp1_medication_consent', 'disagree', 'glp1_medication_consent_declined', 'GLP medication consent is required to proceed.', 'refer_out')),
             $this->question('glp1_compounding_consent', 'Compounding informed consent', 30, NetworkIntakeQuestion::INPUT_RADIO, $this->consentDeclineOptions(), helpText: 'Compounded medications are not FDA-approved and have not undergone FDA review for safety, efficacy, or quality.', networkValidation: $this->blockOnEquals('glp1_compounding_consent', 'decline', 'glp1_compounding_consent_declined', 'Compounding informed consent is required to proceed.', 'refer_out')),
             $this->question('glp1_preventive_screening_acknowledgment', 'Acknowledgment of preventive health screening responsibility', 31, NetworkIntakeQuestion::INPUT_RADIO, $this->agreeDisagreeOptions(), networkValidation: $this->blockOnEquals('glp1_preventive_screening_acknowledgment', 'disagree', 'glp1_preventive_screening_declined', 'Preventive health screening acknowledgment is required to proceed.', 'refer_out')),
             $this->question('glp1_patient_signature', 'Patient signature', 32, NetworkIntakeQuestion::INPUT_TEXT),
@@ -819,6 +821,14 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             'maintain' => 'Maintain dose',
             'increase' => 'Increase dose',
         ]);
+    }
+
+    private function glp1ProductName(string $productSlug): string
+    {
+        return match ($productSlug) {
+            'tirzepatide' => 'Tirzepatide',
+            default => 'Semaglutide',
+        };
     }
 
     private function femaleCondition(): array
