@@ -2094,6 +2094,7 @@ class DrNetworkAdminController extends Controller
                     'completed_at' => $step->completed_at,
                 ])->values(),
             ] : null,
+            'blocking_intake_answer' => $this->caseBlockingIntakeAnswerPayload($order),
             'consultation_record' => $consultationRecord ? [
                 'id' => $consultationRecord->id,
                 'network_case_id' => $consultationRecord->network_case_id,
@@ -2230,6 +2231,58 @@ class DrNetworkAdminController extends Controller
 
         return collect($this->caseFlowStepsPayload($order))
             ->firstWhere('step_key', $currentStepKey);
+    }
+
+    private function caseBlockingIntakeAnswerPayload(Order $order): ?array
+    {
+        $flowRun = $order->flowRun;
+
+        if (! $flowRun) {
+            return null;
+        }
+
+        $context = $flowRun?->context ?? [];
+
+        if (! is_array($context)) {
+            return null;
+        }
+
+        $blockingQuestionKey = $context['blocking_question_key'] ?? null;
+        $blockingQuestionId = $context['blocking_question_id'] ?? null;
+
+        if (! is_string($blockingQuestionKey) && ! is_numeric($blockingQuestionId)) {
+            return null;
+        }
+
+        $answer = $order->intakeAnswers
+            ->first(function ($answer) use ($blockingQuestionKey, $blockingQuestionId): bool {
+                if (is_numeric($blockingQuestionId) && (int) $answer->question_id === (int) $blockingQuestionId) {
+                    return true;
+                }
+
+                return is_string($blockingQuestionKey)
+                    && $answer->question?->question_key === $blockingQuestionKey;
+            });
+
+        $blockingRuleKey = $context['blocking_rule_key'] ?? null;
+        $triggeredRule = collect($context['triggered_rules'] ?? [])
+            ->first(fn ($rule): bool => is_array($rule) && is_string($blockingRuleKey) && ($rule['rule_key'] ?? null) === $blockingRuleKey);
+
+        return [
+            'question_id' => $answer?->question_id ?? (is_numeric($blockingQuestionId) ? (int) $blockingQuestionId : null),
+            'question_key' => $answer?->question?->question_key ?? (is_string($blockingQuestionKey) ? $blockingQuestionKey : null),
+            'question_text' => $answer?->question?->question_text,
+            'input_type' => $answer?->question?->input_type,
+            'answer_value' => $answer?->decodedAnswerValue() ?? ($context['blocking_answer'] ?? null),
+            'answer_id' => $answer?->id,
+            'answer_created_at' => $answer?->created_at,
+            'rule_key' => is_string($blockingRuleKey) ? $blockingRuleKey : ($triggeredRule['rule_key'] ?? null),
+            'failure_reason' => $context['failure_reason'] ?? $flowRun?->failure_reason,
+            'failure_message' => $this->flowRunFailureMessage($flowRun),
+            'hard_stop_type' => $context['hard_stop_type'] ?? ($triggeredRule['hard_stop_type'] ?? null),
+            'conditions' => $context['conditions'] ?? ($triggeredRule['conditions'] ?? null),
+            'triggered_rule' => $triggeredRule ?: null,
+        ];
     }
 
     private function assertCaseDocumentBelongsToNetworkOrder(DrNetwork $network, Order $order, OrderDocument $document): void
