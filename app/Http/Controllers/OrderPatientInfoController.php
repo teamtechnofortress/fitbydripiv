@@ -32,8 +32,21 @@ class OrderPatientInfoController extends Controller
     {
         $validated = $request->validated();
 
+        $email = trim((string) ($validated['email'] ?? ''));
+        $phone = trim((string) ($validated['phone'] ?? ''));
+
         $patient = Patient::query()
-            ->where('email', $validated['email'])
+            ->where(function ($query) use ($email, $phone): void {
+                if ($email !== '') {
+                    $query->orWhere('email', $email);
+                }
+
+                if ($phone !== '') {
+                    $query
+                        ->orWhere('phone', $phone)
+                        ->orWhere('cell', $phone);
+                }
+            })
             ->first();
 
         if (! $patient) {

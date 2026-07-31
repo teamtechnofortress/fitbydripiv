@@ -6,6 +6,7 @@ use App\Exceptions\DrNetwork\NetworkAssignmentException;
 use App\Exceptions\DrNetwork\SlotUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DrNetwork\BookSlotRequest;
+use App\Http\Requests\DrNetwork\ReviewIntakeAnswersRequest;
 use App\Http\Requests\DrNetwork\SaveIntakeAnswerRequest;
 use App\Http\Requests\DrNetwork\UploadDocumentRequest;
 use App\Models\DrNetworkFlowRun;
@@ -14,6 +15,7 @@ use App\Services\DrNetwork\ConsultationManagement\ConsultationSubmissionService;
 use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
 use App\Services\DrNetwork\DocumentManagement\DocumentRequirementResolver;
 use App\Services\DrNetwork\DocumentManagement\DocumentUploadService;
+use App\Services\DrNetwork\IntakeQuestions\IntakeAnswerReviewService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeAnswerService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeQuestionSetResolver;
 use App\Services\DrNetwork\ProviderScheduling\ProviderSlotService;
@@ -26,6 +28,7 @@ class DrNetworkFlowController extends Controller
         private DocumentRequirementResolver $documentRequirementResolver,
         private DocumentUploadService $documentUploadService,
         private IntakeQuestionSetResolver $questionSetResolver,
+        private IntakeAnswerReviewService $answerReviewService,
         private IntakeAnswerService $answerService,
         private ProviderSlotService $slotService,
         private ConsultationSubmissionService $submissionService,
@@ -159,6 +162,16 @@ class DrNetworkFlowController extends Controller
             'current_step_key' => $flowRun?->current_step_key,
             'status' => $flowRun?->status,
         ]);
+    }
+
+    public function reviewIntakeAnswers(ReviewIntakeAnswersRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizeOrder($order);
+
+        return response()->json($this->answerReviewService->review(
+            $order,
+            $request->validated('answers')
+        ));
     }
 
     public function saveIntakeAnswer(SaveIntakeAnswerRequest $request, Order $order): JsonResponse

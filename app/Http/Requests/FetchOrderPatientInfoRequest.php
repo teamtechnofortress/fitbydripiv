@@ -14,7 +14,8 @@ class FetchOrderPatientInfoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['required_without:phone', 'nullable', 'email', 'max:255'],
+            'phone' => ['required_without:email', 'nullable', 'string', 'max:30'],
         ];
     }
 }

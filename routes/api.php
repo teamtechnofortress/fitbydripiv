@@ -157,6 +157,7 @@ Route::prefix('v1')->group(function () {
         Route::post('dr-network/submit', [DrNetworkFlowController::class, 'submit'])->name('dr-network.submit');
         Route::post('documents', [DrNetworkFlowController::class, 'uploadDocument'])->name('dr-network.documents.store');
         Route::post('documents/complete', [DrNetworkFlowController::class, 'completeDocumentUpload'])->name('dr-network.documents.complete');
+        Route::post('intake-answers/review', [DrNetworkFlowController::class, 'reviewIntakeAnswers'])->name('dr-network.intake-answers.review');
         Route::post('intake-answers', [DrNetworkFlowController::class, 'saveIntakeAnswer'])->name('dr-network.intake-answers.store');
         Route::get('provider-slots', [DrNetworkFlowController::class, 'getProviderSlots'])->name('dr-network.provider-slots.index');
         Route::post('provider-slots/{slotId}/book', [DrNetworkFlowController::class, 'bookSlot'])->name('dr-network.provider-slots.book');
