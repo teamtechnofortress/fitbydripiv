@@ -448,15 +448,14 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             $this->question('glp1_taken_as_prescribed', 'Have you been taking this medication as prescribed?', 27, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
             $this->question('glp1_non_prescribed_use_details', 'How have you been taking your medication?', 28, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.glp1_taken_as_prescribed', 'operator' => 'equals', 'value' => 'no']]),
             $this->question('glp1_dose_preference', 'How would you like to continue your dosing plan for this prescription?', 29, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
-            $this->question('glp1_medication_consent', 'GLP medication acknowledgment and consent', 30, NetworkIntakeQuestion::INPUT_CHECKBOX, $this->agreeCheckboxOptions()),
-            $this->glp1CompoundingConsentQuestion(31),
-            $this->question('glp1_preventive_screening_acknowledgment', 'Acknowledgment of preventive health screening responsibility', 32, NetworkIntakeQuestion::INPUT_CHECKBOX, $this->agreeCheckboxOptions()),
-            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 33, NetworkIntakeQuestion::INPUT_TEXT),
-            $this->question('glp1_signature_date', 'Signature date', 34, NetworkIntakeQuestion::INPUT_DATE, metadata: [
+            $this->glp1CompoundingConsentQuestion(30),
+            $this->question('glp1_preventive_screening_acknowledgment', 'Acknowledgment of preventive health screening responsibility', 31, NetworkIntakeQuestion::INPUT_CHECKBOX, $this->agreeCheckboxOptions()),
+            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 32, NetworkIntakeQuestion::INPUT_TEXT),
+            $this->question('glp1_signature_date', 'Signature date', 33, NetworkIntakeQuestion::INPUT_DATE, metadata: [
                 'frontend_hidden' => true,
                 'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CURRENT_DATE,
             ]),
-            $this->termsConsentQuestion(35),
+            $this->termsConsentQuestion(34),
         ];
 
         foreach ($questions as &$question) {
@@ -484,7 +483,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'athletic_recovery' => 'Athletic recovery or performance',
             ]), metadata: ['protocol' => 'nad_initial']),
             $this->question('nad_current_use', 'Do you currently take any form of NAD+?', 2, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_current_use_details', 'Please list the NAD+ product, route, dose, and schedule.', 3, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.nad_current_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['protocol' => 'nad_initial']),
+            $this->question('nad_current_use_details', 'Please list the NAD+ product, dose, and schedule.', 3, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.nad_current_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['protocol' => 'nad_initial']),
             $this->question(
                 'nad_condition_screen',
                 'Do you have any of the following medical conditions?',
