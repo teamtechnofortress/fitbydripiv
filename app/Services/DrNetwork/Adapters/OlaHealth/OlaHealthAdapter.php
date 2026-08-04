@@ -67,11 +67,16 @@ class OlaHealthAdapter extends BaseNetworkAdapter
     public function submitCase(array $payload): array
     {
         $payload = $this->withSubmissionDefaults($payload);
+        $url = "{$this->requiredBaseUrl()}/api-v2/telehealth/service/new-schedule-request";
 
-        $response = $this->authenticatedMultipartPost(
-            "{$this->requiredBaseUrl()}/api-v2/telehealth/service/new-schedule-request",
-            $payload
-        );
+        Log::channel('dr_network')->info('Ola Health case submission payload.', [
+            'adapter_key' => $this->adapterKey,
+            'dr_network_id' => $this->network?->id,
+            'endpoint' => $url,
+            'payload' => $payload,
+        ]);
+
+        $response = $this->authenticatedMultipartPost($url, $payload);
 
         return [
             'case_id' => $response['data'] ?? $response['order_guid'] ?? null,

@@ -70,8 +70,11 @@ class OlaHealthWebhookHandler implements NetworkWebhookProcessor
             $statusPayload = $adapter->getCaseStatus($externalCaseId);
 
             return [
-                $statusPayload['network_status'] ?? null,
-                $statusPayload['raw'] ?? $statusPayload,
+                'completed',
+                [
+                    'webhook_payload' => $event->payload ?? [],
+                    'status_lookup' => $statusPayload,
+                ],
             ];
         }
 
@@ -90,7 +93,12 @@ class OlaHealthWebhookHandler implements NetworkWebhookProcessor
 
     private function statusFromPrescriptionPayload(array $payload): ?string
     {
-        $prescriptionStatus = strtolower((string) ($payload['prescription_status'] ?? ''));
+        $prescriptionStatus = strtolower((string) (
+            $payload['prescription_status']
+            ?? $payload['prescription']['status']
+            ?? $payload['prescription'][0]['status']
+            ?? ''
+        ));
 
         return match ($prescriptionStatus) {
             'accept', 'accepted', 'approved' => 'prescription_issued',

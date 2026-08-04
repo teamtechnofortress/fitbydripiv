@@ -1529,7 +1529,13 @@ class DrNetworkAdminController extends Controller
                 $statusPayload['raw'] ?? []
             );
 
-            return response()->json(['ok' => true, 'flow_run' => $run->fresh()]);
+            return response()->json([
+                'ok' => true,
+                'case_id' => $statusPayload['case_id'] ?? (string) $networkCaseId,
+                'network_status' => $statusPayload['network_status'] ?? 'unknown',
+                'raw' => $statusPayload['raw'] ?? [],
+                'flow_run' => $run->fresh(),
+            ]);
         } catch (Throwable $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
         }
