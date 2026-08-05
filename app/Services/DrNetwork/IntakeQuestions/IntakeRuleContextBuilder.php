@@ -37,9 +37,9 @@ class IntakeRuleContextBuilder
             ->get();
 
         return $answers
-            ->filter(fn (OrderIntakeAnswer $answer): bool => filled($answer->question?->question_key))
+            ->filter(fn (OrderIntakeAnswer $answer): bool => filled($answer->resolvedQuestionKey()))
             ->mapWithKeys(fn (OrderIntakeAnswer $answer): array => [
-                'answers.'.$answer->question->question_key => $answer->decodedAnswerValue(),
+                'answers.'.$answer->resolvedQuestionKey() => $answer->decodedAnswerValue(),
             ])
             ->all();
     }

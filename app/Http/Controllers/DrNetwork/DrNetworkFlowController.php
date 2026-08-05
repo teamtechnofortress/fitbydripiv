@@ -21,6 +21,7 @@ use App\Services\DrNetwork\IntakeQuestions\IntakeQuestionSetResolver;
 use App\Services\DrNetwork\IntakeQuestions\PreviousIntakeAnswerService;
 use App\Services\DrNetwork\ProviderScheduling\ProviderSlotService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class DrNetworkFlowController extends Controller
 {
@@ -114,6 +115,14 @@ class DrNetworkFlowController extends Controller
                     ]),
                 ]);
             }
+
+            Log::channel('dr_network')->info('Dr Network intake current-step payload prepared.', [
+                'order_id' => $order->id,
+                'order_uuid' => $order->order_uuid,
+                'flow_run_id' => $flowRun->id,
+                'current_step_key' => $flowRun->current_step_key,
+                'payload' => $payload,
+            ]);
         }
 
         return response()->json($payload);

@@ -101,9 +101,9 @@ class OlaHealthMapper
             ->with('question')
             ->get()
             ->map(fn (OrderIntakeAnswer $answer): array => [
-                'question_text' => $answer->question?->network_field_mapping
-                    ?: $answer->question?->question_text
-                    ?: $answer->question?->question_key
+                'question_text' => $answer->resolvedNetworkFieldMapping()
+                    ?: $answer->resolvedQuestionText()
+                    ?: $answer->resolvedQuestionKey()
                     ?: "Question {$answer->question_id}",
                 'answer' => $this->stringAnswer($answer->decodedAnswerValue()),
                 'other_text' => '',

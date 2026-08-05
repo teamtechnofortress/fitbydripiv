@@ -43,7 +43,7 @@ class IntakeAnswerService
 
         OrderIntakeAnswer::query()->updateOrCreate(
             ['order_id' => $order->id, 'question_id' => $questionId],
-            ['answer_value' => $this->encodeAnswerValue($answerValue)]
+            $this->answerAttributes($question, $answerValue)
         );
 
         if ($order->flowRun) {
@@ -155,7 +155,7 @@ class IntakeAnswerService
 
                 OrderIntakeAnswer::query()->updateOrCreate(
                     ['order_id' => $order->id, 'question_id' => $question->id],
-                    ['answer_value' => $this->encodeAnswerValue($answerValue)]
+                    $this->answerAttributes($question, $answerValue)
                 );
 
                 $filledQuestions[] = $question;
@@ -273,6 +273,17 @@ class IntakeAnswerService
                 'substances' => $context['provider_review_required_substances'],
             ]);
         }
+    }
+
+    private function answerAttributes(NetworkIntakeQuestion $question, mixed $answerValue): array
+    {
+        return [
+            'question_key' => $question->question_key,
+            'question_text' => $question->question_text,
+            'input_type' => $question->input_type,
+            'network_field_mapping' => $question->network_field_mapping,
+            'answer_value' => $this->encodeAnswerValue($answerValue),
+        ];
     }
 
     private function allRequiredAnswered(Order $order, int $questionSetId): bool
