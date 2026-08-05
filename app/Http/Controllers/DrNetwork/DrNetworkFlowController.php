@@ -18,6 +18,7 @@ use App\Services\DrNetwork\DocumentManagement\DocumentUploadService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeAnswerReviewService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeAnswerService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeQuestionSetResolver;
+use App\Services\DrNetwork\IntakeQuestions\PreviousIntakeAnswerService;
 use App\Services\DrNetwork\ProviderScheduling\ProviderSlotService;
 use Illuminate\Http\JsonResponse;
 
@@ -28,6 +29,7 @@ class DrNetworkFlowController extends Controller
         private DocumentRequirementResolver $documentRequirementResolver,
         private DocumentUploadService $documentUploadService,
         private IntakeQuestionSetResolver $questionSetResolver,
+        private PreviousIntakeAnswerService $previousIntakeAnswerService,
         private IntakeAnswerReviewService $answerReviewService,
         private IntakeAnswerService $answerService,
         private ProviderSlotService $slotService,
@@ -100,6 +102,10 @@ class DrNetworkFlowController extends Controller
             );
 
             $payload['question_set'] = $questionSet;
+            $payload['previous_same_product_intake'] = $this->previousIntakeAnswerService->forOrder(
+                $order,
+                $questionSet ? array_column($questionSet['questions'], 'question_key') : []
+            );
 
             if ($questionSet) {
                 $flowRun->update([
