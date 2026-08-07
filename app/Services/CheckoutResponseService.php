@@ -35,6 +35,11 @@ class CheckoutResponseService
                 'birthday' => $order->patient->birthday,
                 'age' => $order->patient->age,
                 'gender' => $order->patient->gender,
+                'height' => $order->patient->height,
+                'heightFeet' => $this->heightFeet($order->patient->height),
+                'heightInches' => $this->heightInches($order->patient->height),
+                'weight' => $order->patient->weight,
+                'bmi' => $order->patient->bmi,
             ] : null,
             'product' => $order->product ? [
                 'id' => $order->product->id,
@@ -83,5 +88,23 @@ class CheckoutResponseService
                 ] : null,
             ],
         ];
+    }
+
+    private function heightFeet(mixed $height): ?int
+    {
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return intdiv((int) round((float) $height), 12);
+    }
+
+    private function heightInches(mixed $height): ?int
+    {
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return (int) round((float) $height) % 12;
     }
 }

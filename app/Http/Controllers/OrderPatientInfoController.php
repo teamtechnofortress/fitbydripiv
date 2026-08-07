@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\DrNetwork\NetworkAssignmentException;
 use App\Http\Requests\FetchOrderPatientInfoRequest;
+use App\Http\Requests\SaveOrderAdditionalPatientInfoRequest;
 use App\Http\Requests\SaveOrderPatientInfoRequest;
 use App\Models\Order;
 use App\Models\Patient;
@@ -30,24 +31,7 @@ class OrderPatientInfoController extends Controller
 
     public function show(FetchOrderPatientInfoRequest $request, Order $order): JsonResponse
     {
-        $validated = $request->validated();
-
-        $email = trim((string) ($validated['email'] ?? ''));
-        $phone = trim((string) ($validated['phone'] ?? ''));
-
-        $patient = Patient::query()
-            ->where(function ($query) use ($email, $phone): void {
-                if ($email !== '') {
-                    $query->orWhere('email', $email);
-                }
-
-                if ($phone !== '') {
-                    $query
-                        ->orWhere('phone', $phone)
-                        ->orWhere('cell', $phone);
-                }
-            })
-            ->first();
+        $patient = $this->findPatientByContact($request->validated());
 
         if (! $patient) {
             return response()->json([
@@ -56,24 +40,30 @@ class OrderPatientInfoController extends Controller
         }
 
         return response()->json([
-            'message' => 'Patient information fetched successfully.',
-            'data' => $this->patientFormPayload($patient),
-            'patient' => [
-                'id' => $patient->id,
-                'first_name' => $patient->first_name,
-                'middle_name' => $patient->middle_name,
-                'last_name' => $patient->last_name,
-                'email' => $patient->email,
-                'phone' => $patient->phone,
-                'birthday' => $patient->birthday,
-                'age' => $patient->age,
-                'gender' => $patient->gender,
-                'ethnicity' => $patient->ethnicity,
-                'address' => $patient->address,
-                'city' => $patient->city,
-                'state' => $patient->state,
-                'zip' => $patient->zip,
-            ],
+            'message' => 'Required patient information fetched successfully.',
+            'data' => $this->requiredPatientInfoPayload($patient),
+            'patient' => $this->requiredPatientResource($patient),
+        ]);
+    }
+
+    public function showAdditional(Order $order): JsonResponse
+    {
+        $order->loadMissing('patient');
+        $patient = $order->patient;
+
+        if (! $patient) {
+            return response()->json([
+                'message' => 'Required patient information must be submitted first.',
+                'errors' => [
+                    'patient_info' => ['Submit required patient information before fetching additional patient information.'],
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Additional patient information fetched successfully.',
+            'data' => $this->additionalPatientInfoPayload($patient),
+            'patient' => $this->additionalPatientResource($patient),
         ]);
     }
 
@@ -118,6 +108,35 @@ class OrderPatientInfoController extends Controller
         return response()->json($result, ($result['already_completed'] ?? false) ? 200 : 201);
     }
 
+    public function storeAdditional(SaveOrderAdditionalPatientInfoRequest $request, Order $order): JsonResponse
+    {
+        $validated = $request->validated();
+        $order->loadMissing(['patient', 'flowRun']);
+
+        if (! $order->patient) {
+            return response()->json([
+                'message' => 'Required patient information must be submitted first.',
+                'errors' => [
+                    'patient_info' => ['Submit date of birth, email, phone, state, and gender before additional patient information.'],
+                ],
+            ], 422);
+        }
+
+        $idempotencyPayload = array_merge($validated, [
+            'orderUuid' => $order->order_uuid,
+            'patientId' => $order->patient_id,
+        ]);
+
+        $result = $this->idempotencyService->handle(
+            $request->header('Idempotency-Key'),
+            'orders.patient-info.additional',
+            $idempotencyPayload,
+            fn () => $this->saveAdditionalPatientInfo($validated, $order)
+        );
+
+        return response()->json($result);
+    }
+
     private function savePatientInfoAndStartJourney(array $validated, Order $order, string $stateCode): array
     {
         $order->loadMissing('flowRun');
@@ -132,21 +151,17 @@ class OrderPatientInfoController extends Controller
 
         $updatedOrder = DB::transaction(function () use ($validated, $order, $stateCode): Order {
             $phone = trim((string) ($validated['phone'] ?? ''));
+            $bodyMetrics = $this->bodyMetricsFromRequiredPatientInfo($validated);
 
             $patient = Patient::firstOrNew(['email' => $validated['email']]);
             $patient->fill([
-                'first_name' => $validated['firstName'],
-                'middle_name' => $validated['middleName'] ?? null,
-                'last_name' => $validated['lastName'],
-                'phone' => $phone !== '' ? $phone : null,
-                'address' => $validated['address'],
-                'city' => $validated['city'],
                 'state' => $validated['state'],
-                'zip' => $validated['zip'],
+                'phone' => $phone !== '' ? $phone : null,
                 'birthday' => $validated['dateOfBirth'],
-                'age' => $validated['age'] ?? null,
-                'gender' => $validated['gender'] ?? null,
-                'ethnicity' => $validated['ethnicity'] ?? null,
+                'gender' => $validated['gender'],
+                'height' => $bodyMetrics['height'],
+                'weight' => $bodyMetrics['weight'],
+                'bmi' => $bodyMetrics['bmi'],
             ]);
             $patient->save();
 
@@ -175,6 +190,50 @@ class OrderPatientInfoController extends Controller
         );
     }
 
+    private function bodyMetricsFromRequiredPatientInfo(array $validated): array
+    {
+        $feet = (int) $validated['heightFeet'];
+        $inches = (int) $validated['heightInches'];
+        $weight = (float) $validated['weight'];
+        $totalInches = ($feet * 12) + $inches;
+
+        return [
+            'height' => $totalInches,
+            'weight' => $weight,
+            'bmi' => round(($weight * 703) / ($totalInches * $totalInches), 2),
+        ];
+    }
+
+    private function saveAdditionalPatientInfo(array $validated, Order $order): array
+    {
+        $updatedOrder = DB::transaction(function () use ($validated, $order): Order {
+            $order->loadMissing('patient');
+            $patient = $order->patient;
+
+            $patient->fill([
+                'first_name' => $validated['firstName'],
+                'last_name' => $validated['lastName'],
+                'address' => $validated['address'],
+                'city' => $validated['city'],
+                'zip' => $validated['zip'],
+            ]);
+            $patient->save();
+
+            Log::info('Additional order patient information saved.', [
+                'order_id' => $order->id,
+                'patient_id' => $patient->id,
+            ]);
+
+            return $order->fresh(['patient', 'flowRun']);
+        });
+
+        return $this->buildResponse(
+            $updatedOrder,
+            'Additional patient information saved successfully.',
+            false
+        );
+    }
+
     private function buildResponse(Order $order, string $message, bool $alreadyCompleted): array
     {
         $context = $this->checkoutResponseService->buildOrderContext($order);
@@ -190,22 +249,99 @@ class OrderPatientInfoController extends Controller
         ];
     }
 
-    private function patientFormPayload(Patient $patient): array
+    private function findPatientByContact(array $validated): ?Patient
+    {
+        $email = trim((string) ($validated['email'] ?? ''));
+        $phone = trim((string) ($validated['phone'] ?? ''));
+
+        return Patient::query()
+            ->where(function ($query) use ($email, $phone): void {
+                if ($email !== '') {
+                    $query->orWhere('email', $email);
+                }
+
+                if ($phone !== '') {
+                    $query
+                        ->orWhere('phone', $phone)
+                        ->orWhere('cell', $phone);
+                }
+            })
+            ->first();
+    }
+
+    private function requiredPatientInfoPayload(Patient $patient): array
     {
         return [
-            'firstName' => $patient->first_name,
-            'middleName' => $patient->middle_name,
-            'lastName' => $patient->last_name,
             'phone' => $patient->phone,
-            'address' => $patient->address,
-            'city' => $patient->city,
             'state' => $patient->state,
-            'zip' => $patient->zip,
             'email' => $patient->email,
             'dateOfBirth' => $patient->birthday,
             'age' => $patient->age,
             'gender' => $patient->gender,
-            'ethnicity' => $patient->ethnicity,
+            'height' => $patient->height,
+            'heightFeet' => $this->heightFeet($patient->height),
+            'heightInches' => $this->heightInches($patient->height),
+            'weight' => $patient->weight,
+            'bmi' => $patient->bmi,
         ];
+    }
+
+    private function requiredPatientResource(Patient $patient): array
+    {
+        return [
+            'id' => $patient->id,
+            'email' => $patient->email,
+            'phone' => $patient->phone,
+            'birthday' => $patient->birthday,
+            'age' => $patient->age,
+            'gender' => $patient->gender,
+            'state' => $patient->state,
+            'height' => $patient->height,
+            'heightFeet' => $this->heightFeet($patient->height),
+            'heightInches' => $this->heightInches($patient->height),
+            'weight' => $patient->weight,
+            'bmi' => $patient->bmi,
+        ];
+    }
+
+    private function additionalPatientInfoPayload(Patient $patient): array
+    {
+        return [
+            'firstName' => $patient->first_name,
+            'lastName' => $patient->last_name,
+            'address' => $patient->address,
+            'city' => $patient->city,
+            'zip' => $patient->zip,
+        ];
+    }
+
+    private function additionalPatientResource(Patient $patient): array
+    {
+        return [
+            'id' => $patient->id,
+            'first_name' => $patient->first_name,
+            'last_name' => $patient->last_name,
+            'address' => $patient->address,
+            'city' => $patient->city,
+            'zip' => $patient->zip,
+        ];
+    }
+
+    private function heightFeet(mixed $height): ?int
+    {
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return intdiv((int) round((float) $height), 12);
+    }
+
+    private function heightInches(mixed $height): ?int
+    {
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return (int) round((float) $height) % 12;
     }
 }

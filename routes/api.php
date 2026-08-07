@@ -150,6 +150,8 @@ Route::prefix('v1')->group(function () {
         Route::get('journey', [OrderJourneyController::class, 'show'])->name('orders.journey.show');
         Route::get('patient-info', [OrderPatientInfoController::class, 'show'])->name('orders.patient-info.show');
         Route::post('patient-info', [OrderPatientInfoController::class, 'store'])->name('orders.patient-info.store');
+        Route::get('patient-info/additional', [OrderPatientInfoController::class, 'showAdditional'])->name('orders.patient-info.additional.show');
+        Route::post('patient-info/additional', [OrderPatientInfoController::class, 'storeAdditional'])->name('orders.patient-info.additional.store');
         Route::get('workflow/current-step', [DrNetworkFlowController::class, 'currentStep'])->name('orders.workflow.current-step');
         Route::post('dr-network/start', [DrNetworkFlowController::class, 'start'])->name('dr-network.start');
         Route::get('dr-network/current-step', [DrNetworkFlowController::class, 'currentStep'])->name('dr-network.current-step');
