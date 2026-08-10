@@ -358,61 +358,21 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             $this->question('glp1_current_medications', 'List all medications you currently take, including supplements.', 11, NetworkIntakeQuestion::INPUT_LONG_TEXT),
             $this->question('glp1_allergies', 'List any allergies you have, including drug, food, or other allergies.', 12, NetworkIntakeQuestion::INPUT_LONG_TEXT),
             $this->question('glp1_oral_contraceptive', 'Do you currently take an oral contraceptive birth control pill?', 13, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: $this->femaleCondition()),
-            $this->question(
-                'glp1_ocp_acknowledgment',
-                'Oral contraceptive acknowledgment',
-                14,
-                NetworkIntakeQuestion::INPUT_CHECKBOX,
-                $this->acknowledgmentCheckboxOptions(),
-                helpText: 'Tirzepatide may reduce oral hormonal contraceptive bioavailability. Use a non-oral method or add a barrier method for 4 weeks after initiation and each dose increase.',
-                isConditional: true,
-                conditionRules: [['source' => 'answers.glp1_oral_contraceptive', 'operator' => 'equals', 'value' => 'yes']]
-            ),
-            $this->question('glp1_thyroid_medication', 'Do you currently take thyroid hormone medication such as levothyroxine, Synthroid, Levoxyl, or Armour Thyroid?', 15, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
-            $this->question(
-                'glp1_levothyroxine_acknowledgment',
-                'Levothyroxine acknowledgment',
-                16,
-                NetworkIntakeQuestion::INPUT_CHECKBOX,
-                $this->acknowledgmentCheckboxOptions(),
-                helpText: 'Oral semaglutide and oral compounded tirzepatide may increase levothyroxine exposure. Thyroid monitoring may be needed.',
-                isConditional: true,
-                conditionRules: [['source' => 'answers.glp1_thyroid_medication', 'operator' => 'equals', 'value' => 'yes']]
-            ),
-            $this->question('glp1_warfarin', 'Do you currently take Warfarin or Coumadin?', 17, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
-            $this->question(
-                'glp1_warfarin_acknowledgment',
-                'Warfarin acknowledgment',
-                18,
-                NetworkIntakeQuestion::INPUT_CHECKBOX,
-                $this->acknowledgmentCheckboxOptions(),
-                helpText: 'GLP medications may affect INR variability. Inform the clinician who manages Warfarin.',
-                isConditional: true,
-                conditionRules: [['source' => 'answers.glp1_warfarin', 'operator' => 'equals', 'value' => 'yes']]
-            ),
+            $this->question('glp1_thyroid_medication', 'Do you currently take thyroid hormone medication such as levothyroxine, Synthroid, Levoxyl, or Armour Thyroid?', 14, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
+            $this->question('glp1_warfarin', 'Do you currently take Warfarin or Coumadin?', 15, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
             $this->question(
                 'glp1_contraception_method',
                 'What form of contraception are you currently using?',
-                19,
+                16,
                 NetworkIntakeQuestion::INPUT_SELECT,
                 $this->contraceptionOptions(),
                 isConditional: true,
                 conditionRules: $this->femaleCondition()
             ),
             $this->question(
-                'glp1_contraception_acknowledgment',
-                'Contraception acknowledgment',
-                20,
-                NetworkIntakeQuestion::INPUT_CHECKBOX,
-                $this->acknowledgmentCheckboxOptions(),
-                helpText: 'GLP medications may cause fetal harm. Use a reliable method of contraception while taking this medication.',
-                isConditional: true,
-                conditionRules: [['source' => 'answers.glp1_contraception_method', 'operator' => 'in', 'value' => ['none', 'barrier']]]
-            ),
-            $this->question(
                 'glp1_compounding_concerns',
                 'To be eligible for a GLP prescription which one of the following apply?',
-                21,
+                17,
                 NetworkIntakeQuestion::INPUT_MULTISELECT,
                 $this->options([
                     'prior_severe_brand_side_effects' => 'Severe side effects with brand-name tirzepatide or semaglutide in the past',
@@ -438,15 +398,14 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     ],
                 ]
             ),
-            $this->question('glp1_recent_use', "Are you currently using {$productName}, or have you taken it in the last 4 weeks?", 22, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
-            $this->question('glp1_recent_medication_dosage', 'What medication and dosage are you currently using, or did you use in the last 4 weeks?', 23, NetworkIntakeQuestion::INPUT_LONG_TEXT, helpText: 'Include medication name, dose, concentration, frequency, and fill date if known.', isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
-            $this->question('glp1_last_dose_date', 'What is the date of your last dose?', 24, NetworkIntakeQuestion::INPUT_DATE, isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
-            $this->question('glp1_taken_as_prescribed', 'Have you been taking this medication as prescribed?', 25, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
-            $this->question('glp1_non_prescribed_use_details', 'How have you been taking your medication?', 26, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.glp1_taken_as_prescribed', 'operator' => 'equals', 'value' => 'no']]),
-            $this->question('glp1_dose_preference', 'How would you like to continue your dosing plan for this prescription?', 27, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
-            $this->question('glp1_preventive_screening_acknowledgment', 'Acknowledgment of preventive health screening responsibility', 28, NetworkIntakeQuestion::INPUT_CHECKBOX, $this->agreeCheckboxOptions()),
-            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 29, NetworkIntakeQuestion::INPUT_TEXT),
-            $this->question('glp1_signature_date', 'Signature date', 30, NetworkIntakeQuestion::INPUT_DATE, metadata: [
+            $this->question('glp1_recent_use', "Are you currently using {$productName}, or have you taken it in the last 4 weeks?", 18, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions()),
+            $this->question('glp1_recent_medication_dosage', 'What medication and dosage are you currently using, or did you use in the last 4 weeks?', 19, NetworkIntakeQuestion::INPUT_LONG_TEXT, helpText: 'Include medication name, dose, concentration, frequency, and fill date if known.', isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
+            $this->question('glp1_last_dose_date', 'What is the date of your last dose?', 20, NetworkIntakeQuestion::INPUT_DATE, isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
+            $this->question('glp1_taken_as_prescribed', 'Have you been taking this medication as prescribed?', 21, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
+            $this->question('glp1_non_prescribed_use_details', 'How have you been taking your medication?', 22, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.glp1_taken_as_prescribed', 'operator' => 'equals', 'value' => 'no']]),
+            $this->question('glp1_dose_preference', 'How would you like to continue your dosing plan for this prescription?', 23, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
+            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 24, NetworkIntakeQuestion::INPUT_TEXT),
+            $this->question('glp1_signature_date', 'Signature date', 25, NetworkIntakeQuestion::INPUT_DATE, metadata: [
                 'frontend_hidden' => true,
                 'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CURRENT_DATE,
             ]),
@@ -530,7 +489,6 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'cravings' => 'Cravings for alcohol, sugar, or caffeine',
             ]), metadata: ['protocol' => 'nad_initial']),
             $this->question('nad_has_diabetes', 'Do you have diabetes?', 11, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_diabetes_monitoring_acknowledgment', 'If you are diabetic, do you agree to monitor your blood sugar closely?', 12, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.nad_has_diabetes', 'operator' => 'equals', 'value' => 'yes']], networkValidation: $this->blockOnEquals('nad_diabetes_monitoring_acknowledgment', 'no', 'nad_diabetes_monitoring_declined', 'Blood sugar monitoring agreement is required for diabetic patients before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial']),
             // $this->question('nad_recent_labs_available', 'Do you have A1c and CMP lab results from within the last 6 weeks?', 16, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoUnsureOptions(), networkValidation: $this->blockOnAnyEquals('nad_recent_labs_available', ['no', 'not_sure'], 'nad_missing_required_labs', 'A1c and CMP labs from within the last 6 weeks are required before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial', 'system_gap' => 'Lab artifact upload/verification is not wired into intake answers yet.']),
         ];
     }
@@ -757,20 +715,6 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             'yes' => 'Yes',
             'no' => 'No',
             'not_sure' => 'Not sure',
-        ]);
-    }
-
-    private function acknowledgmentCheckboxOptions(): array
-    {
-        return $this->options([
-            'acknowledged' => 'I acknowledge that I have read and understand this information',
-        ]);
-    }
-
-    private function agreeCheckboxOptions(): array
-    {
-        return $this->options([
-            'agree' => 'I acknowledge and agree',
         ]);
     }
 
