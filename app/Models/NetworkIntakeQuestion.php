@@ -56,11 +56,23 @@ class NetworkIntakeQuestion extends Model
 
     public const AUTO_FILL_CALCULATED_BMI = 'calculated_bmi';
 
+    public const AUTO_FILL_PATIENT_HEIGHT_FEET = 'patient_height_feet';
+
+    public const AUTO_FILL_PATIENT_HEIGHT_INCHES = 'patient_height_inches';
+
+    public const AUTO_FILL_PATIENT_WEIGHT = 'patient_weight';
+
+    public const AUTO_FILL_PATIENT_BMI = 'patient_bmi';
+
     public const AUTO_FILL_TYPES = [
         self::AUTO_FILL_CURRENT_DATE,
         self::AUTO_FILL_PATIENT_NAME,
         self::AUTO_FILL_ORDER_UUID,
         self::AUTO_FILL_CALCULATED_BMI,
+        self::AUTO_FILL_PATIENT_HEIGHT_FEET,
+        self::AUTO_FILL_PATIENT_HEIGHT_INCHES,
+        self::AUTO_FILL_PATIENT_WEIGHT,
+        self::AUTO_FILL_PATIENT_BMI,
     ];
 
     protected $table = 'network_intake_questions';

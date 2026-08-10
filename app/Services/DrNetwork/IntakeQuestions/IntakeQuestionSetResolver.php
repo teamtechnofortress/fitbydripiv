@@ -9,6 +9,11 @@ use App\Models\Order;
 
 class IntakeQuestionSetResolver
 {
+    public function __construct(
+        private IntakeRuleContextBuilder $contextBuilder,
+        private IntakeQuestionRuleEvaluator $ruleEvaluator,
+    ) {}
+
     public function resolve(
         int $drNetworkId,
         string $flowKey,
@@ -23,15 +28,17 @@ class IntakeQuestionSetResolver
 
         $set = NetworkIntakeQuestionSet::resolveFor($drNetworkId, $flowId, $productCode, $stateCode);
 
-        return $set ? $this->hydrateSet($set) : null;
+        return $set ? $this->hydrateSet($set, $order) : null;
     }
 
-    private function hydrateSet(NetworkIntakeQuestionSet $set): array
+    private function hydrateSet(NetworkIntakeQuestionSet $set, ?Order $order): array
     {
         $questions = $set->questions()->get();
+        $context = $order ? $this->contextBuilder->build($order, $set->id) : [];
 
         $questions = $questions
             ->reject(fn (NetworkIntakeQuestion $question): bool => $question->isHiddenFromPatient())
+            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->ruleEvaluator->applies($question, $context))
             ->values();
 
         return [

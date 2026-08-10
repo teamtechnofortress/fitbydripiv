@@ -182,6 +182,8 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 3,
                 NetworkIntakeQuestion::INPUT_NUMBER,
                 metadata: [
+                    'frontend_hidden' => true,
+                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_PATIENT_HEIGHT_FEET,
                     'unit' => 'ft',
                     'ui_component' => 'bmi_calculator',
                     'ui_page_key' => 'body_metrics',
@@ -196,6 +198,8 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 4,
                 NetworkIntakeQuestion::INPUT_NUMBER,
                 metadata: [
+                    'frontend_hidden' => true,
+                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_PATIENT_HEIGHT_INCHES,
                     'unit' => 'in',
                     'ui_component' => 'bmi_calculator',
                     'ui_page_key' => 'body_metrics',
@@ -210,6 +214,8 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 5,
                 NetworkIntakeQuestion::INPUT_NUMBER,
                 metadata: [
+                    'frontend_hidden' => true,
+                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_PATIENT_WEIGHT,
                     'unit' => 'lbs',
                     'ui_component' => 'bmi_calculator',
                     'ui_page_key' => 'body_metrics',
@@ -238,7 +244,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     ],
                 ],
                 metadata: [
-                    'frontend_visible' => true,
+                    'frontend_hidden' => true,
                     'read_only' => true,
                     'unit' => 'bmi',
                     'ui_component' => 'bmi_calculator',
@@ -246,7 +252,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                     'ui_group_key' => 'glp1_body_metrics',
                     'ui_group_label' => 'Body metrics',
                     'ui_group_role' => 'bmi',
-                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CALCULATED_BMI,
+                    'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_PATIENT_BMI,
                     'calculation_required' => true,
                     'calculated_from' => [
                         'glp1_height_feet',
@@ -415,7 +421,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             ),
             $this->question(
                 'glp1_compounding_concerns',
-                'Which of the following apply to you regarding compounded medication eligibility?',
+                'To be eligible for a GLP prescription which one of the following apply?',
                 23,
                 NetworkIntakeQuestion::INPUT_MULTISELECT,
                 $this->options([
@@ -515,20 +521,19 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 metadata: ['protocol' => 'nad_initial']
             ),
             $this->question('nad_pregnancy_status', 'Are you currently pregnant, breastfeeding, bottle-feeding with breast milk, or trying to conceive?', 5, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: $this->femaleCondition(), networkValidation: $this->blockOnEquals('nad_pregnancy_status', 'yes', 'nad_pregnancy_refer_out', 'NAD+ therapy cannot proceed during pregnancy, breastfeeding, or while trying to conceive.', 'refer_out'), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_blood_pressure', 'What is your current blood pressure reading within the last 6 weeks?', 6, NetworkIntakeQuestion::INPUT_SELECT, $this->options([
-                'less_than_100_60' => 'Less than 100/60',
-                '110_120_60_70' => '110-120/60-70',
-                '120_130_70_80' => '120-130/70-80',
-                '130_140_80_90' => '130-140/80-90',
-                '140_150_90_100' => '140-150/90-100',
-                'unsure' => 'Unsure',
-            ]), networkValidation: $this->blockOnAnyEquals('nad_blood_pressure', ['less_than_100_60', 'unsure'], 'nad_blood_pressure_not_clear', 'A current acceptable blood pressure reading is required before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_injectable_preservative_allergy', 'Do you have allergies to preservatives or injectables such as benzyl alcohol or lidocaine?', 7, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_injectable_preservative_allergy_details', 'Please describe your preservative or injectable allergy.', 8, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.nad_injectable_preservative_allergy', 'operator' => 'equals', 'value' => 'yes']], metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_medication_allergies', 'Please list any medication allergies that you have.', 9, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_current_medications', 'List any current prescription medications, supplements, or vitamins you are taking.', 10, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_energy_level', 'How would you rate your baseline energy level from 1 lowest to 10 highest?', 11, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_regular_symptoms', 'Do you experience any of the following regularly?', 12, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
+            $this->question(
+                'nad_blood_pressure',
+                'Have you ever been diagnosed with elevated or low blood pressure?',
+                6,
+                NetworkIntakeQuestion::INPUT_RADIO,
+                $this->yesNoOptions(),
+                networkValidation: $this->blockOnEquals('nad_blood_pressure', 'yes', 'nad_blood_pressure_history', 'NAD+ therapy cannot proceed through this telehealth flow with a history of elevated or low blood pressure.', 'refer_out'),
+                metadata: ['protocol' => 'nad_initial']
+            ),
+            $this->question('nad_medication_allergies', 'If you have allergies to preservatives or injectables such as benzyl alcohol, lidocaine or any other medications please list the allergies you have', 7, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
+            $this->question('nad_current_medications', 'List any current prescription medications, supplements, or vitamins you are taking.', 8, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
+            $this->question('nad_energy_level', 'How would you rate your baseline energy level from 1 lowest to 10 highest?', 9, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['protocol' => 'nad_initial']),
+            $this->question('nad_regular_symptoms', 'Do you experience any of the following regularly?', 10, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
                 'brain_fog' => 'Brain fog',
                 'low_motivation' => 'Low motivation',
                 'poor_sleep' => 'Poor sleep',
@@ -536,9 +541,9 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
                 'chronic_fatigue' => 'Chronic fatigue',
                 'cravings' => 'Cravings for alcohol, sugar, or caffeine',
             ]), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_has_diabetes', 'Do you have diabetes?', 13, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_diabetes_monitoring_acknowledgment', 'If you are diabetic, do you agree to monitor your blood sugar closely?', 14, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.nad_has_diabetes', 'operator' => 'equals', 'value' => 'yes']], networkValidation: $this->blockOnEquals('nad_diabetes_monitoring_acknowledgment', 'no', 'nad_diabetes_monitoring_declined', 'Blood sugar monitoring agreement is required for diabetic patients before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial']),
-            $this->termsConsentQuestion(15, ['protocol' => 'nad_initial']),
+            $this->question('nad_has_diabetes', 'Do you have diabetes?', 11, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), metadata: ['protocol' => 'nad_initial']),
+            $this->question('nad_diabetes_monitoring_acknowledgment', 'If you are diabetic, do you agree to monitor your blood sugar closely?', 12, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.nad_has_diabetes', 'operator' => 'equals', 'value' => 'yes']], networkValidation: $this->blockOnEquals('nad_diabetes_monitoring_acknowledgment', 'no', 'nad_diabetes_monitoring_declined', 'Blood sugar monitoring agreement is required for diabetic patients before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial']),
+            $this->termsConsentQuestion(13, ['protocol' => 'nad_initial']),
             // $this->question('nad_recent_labs_available', 'Do you have A1c and CMP lab results from within the last 6 weeks?', 16, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoUnsureOptions(), networkValidation: $this->blockOnAnyEquals('nad_recent_labs_available', ['no', 'not_sure'], 'nad_missing_required_labs', 'A1c and CMP labs from within the last 6 weeks are required before NAD+ therapy can proceed.', 'refer_out'), metadata: ['protocol' => 'nad_initial', 'system_gap' => 'Lab artifact upload/verification is not wired into intake answers yet.']),
         ];
     }

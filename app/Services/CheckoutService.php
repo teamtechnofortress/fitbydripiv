@@ -94,7 +94,7 @@ class CheckoutService
     {
         Stripe::setApiKey(config('services.stripe.secret'));
 
-        $order->loadMissing('pricingOption');
+        $order->loadMissing(['patient', 'pricingOption']);
         $product = $product ?? Product::with('coverImage')->find($order->product_id);
         $pricingOption = $order->pricingOption;
 
@@ -159,6 +159,12 @@ class CheckoutService
             ],
         ];
 
+        $customerEmail = trim((string) ($order->patient?->email ?? ''));
+
+        if ($customerEmail !== '') {
+            $params['customer_email'] = $customerEmail;
+        }
+
         if ($subscriptionMetadata !== []) {
             $params['metadata'] = array_merge($params['metadata'], $subscriptionMetadata);
         }
@@ -210,6 +216,7 @@ class CheckoutService
             'purchase_type' => $purchaseType,
             'stripe_payload' => [
                 'mode' => $params['mode'],
+                'has_customer_email' => isset($params['customer_email']),
                 'metadata' => $params['metadata'],
                 'subscription_data' => $params['subscription_data'] ?? null,
                 'payment_intent_data' => $params['payment_intent_data'] ?? null,

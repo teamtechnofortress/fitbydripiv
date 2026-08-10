@@ -171,6 +171,10 @@ class IntakeAnswerService
             NetworkIntakeQuestion::AUTO_FILL_PATIENT_NAME => $this->patientFullName($order),
             NetworkIntakeQuestion::AUTO_FILL_ORDER_UUID => $order->order_uuid ?? $order->uuid ?? (string) $order->id,
             NetworkIntakeQuestion::AUTO_FILL_CALCULATED_BMI => $this->calculatedBmi($context),
+            NetworkIntakeQuestion::AUTO_FILL_PATIENT_HEIGHT_FEET => $this->patientHeightFeet($order),
+            NetworkIntakeQuestion::AUTO_FILL_PATIENT_HEIGHT_INCHES => $this->patientHeightInches($order),
+            NetworkIntakeQuestion::AUTO_FILL_PATIENT_WEIGHT => $order->patient?->weight,
+            NetworkIntakeQuestion::AUTO_FILL_PATIENT_BMI => $order->patient?->bmi,
             default => null,
         };
     }
@@ -211,6 +215,28 @@ class IntakeAnswerService
         ])));
 
         return $name === '' ? null : $name;
+    }
+
+    private function patientHeightFeet(Order $order): ?int
+    {
+        $height = $order->patient?->height;
+
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return intdiv((int) round((float) $height), 12);
+    }
+
+    private function patientHeightInches(Order $order): ?int
+    {
+        $height = $order->patient?->height;
+
+        if (! is_numeric($height) || (float) $height <= 0) {
+            return null;
+        }
+
+        return (int) round((float) $height) % 12;
     }
 
     private function syncProviderReviewRequirements(
