@@ -25,6 +25,7 @@ use App\Http\Controllers\IngredientController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\MarketingController;
+use App\Http\Controllers\OrderConsentController;
 use App\Http\Controllers\OrderJourneyController;
 use App\Http\Controllers\OrderPatientInfoController;
 use App\Http\Controllers\PatientAppointmentController;
@@ -148,6 +149,7 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('orders/{order:order_uuid}')->group(function () {
         Route::get('journey', [OrderJourneyController::class, 'show'])->name('orders.journey.show');
+        Route::post('consents', [OrderConsentController::class, 'store'])->name('orders.consents.store');
         Route::get('patient-info', [OrderPatientInfoController::class, 'show'])->name('orders.patient-info.show');
         Route::post('patient-info', [OrderPatientInfoController::class, 'store'])->name('orders.patient-info.store');
         Route::get('patient-info/additional', [OrderPatientInfoController::class, 'showAdditional'])->name('orders.patient-info.additional.show');

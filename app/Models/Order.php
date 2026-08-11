@@ -129,6 +129,11 @@ class Order extends Model
         return $this->hasOne(DrNetworkTransaction::class, 'order_id');
     }
 
+    public function consents(): HasMany
+    {
+        return $this->hasMany(OrderConsent::class, 'order_id');
+    }
+
     public function pricingOption(): BelongsTo
     {
         return $this->belongsTo(PricingOption::class, 'pricing_option_id');

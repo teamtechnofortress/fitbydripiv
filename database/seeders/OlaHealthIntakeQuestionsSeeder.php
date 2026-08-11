@@ -480,7 +480,7 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             $this->question('nad_medication_allergies', 'If you have allergies to preservatives or injectables such as benzyl alcohol, lidocaine or any other medications please list the allergies you have', 7, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
             $this->question('nad_current_medications', 'List any current prescription medications, supplements, or vitamins you are taking.', 8, NetworkIntakeQuestion::INPUT_LONG_TEXT, metadata: ['protocol' => 'nad_initial']),
             $this->question('nad_energy_level', 'How would you rate your baseline energy level from 1 lowest to 10 highest?', 9, NetworkIntakeQuestion::INPUT_NUMBER, metadata: ['protocol' => 'nad_initial']),
-            $this->question('nad_regular_symptoms', 'Do you experience any of the following regularly?', 10, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
+            $this->question('nad_regular_symptoms', 'To be eligible for a NAD+ prescription which of the following apply?', 10, NetworkIntakeQuestion::INPUT_MULTISELECT, $this->options([
                 'brain_fog' => 'Brain fog',
                 'low_motivation' => 'Low motivation',
                 'poor_sleep' => 'Poor sleep',

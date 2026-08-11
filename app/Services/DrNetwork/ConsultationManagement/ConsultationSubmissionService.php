@@ -4,6 +4,7 @@ namespace App\Services\DrNetwork\ConsultationManagement;
 
 use App\Models\ConsultationRecord;
 use App\Models\Order;
+use App\Models\OrderConsent;
 use App\Services\DrNetwork\Adapters\OlaHealth\OlaHealthMapper;
 use App\Services\DrNetwork\Core\DrNetworkOrchestrator;
 use App\Services\DrNetwork\Finance\DrNetworkFinanceService;
@@ -48,6 +49,11 @@ class ConsultationSubmissionService
             );
 
             $this->financeService->recordTransactionForSubmission($order, $record);
+
+            OrderConsent::query()
+                ->where('order_id', $order->id)
+                ->whereNull('consultation_record_id')
+                ->update(['consultation_record_id' => $record->id]);
 
             $flowRun->update([
                 'context' => array_merge($context, [

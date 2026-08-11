@@ -4,14 +4,33 @@ namespace App\Services;
 
 use App\Models\DrNetworkFlowRun;
 use App\Models\Order;
+use App\Services\Consent\OrderConsentService;
 
 class OrderJourneyService
 {
+    public function __construct(
+        private OrderConsentService $consentService,
+    ) {}
+
     public function build(Order $order): array
     {
         $order->loadMissing('flowRun');
 
         $flowRun = $order->flowRun;
+
+        if ($this->consentService->hasRejectedLegalConsent($order)) {
+            return $this->response(
+                order: $order,
+                phase: 'legal_consent',
+                currentStepKey: 'legal_consent_rejected',
+                isReady: false,
+                journeyStatus: 'legal_consent_rejected',
+                nextAction: 'contact_support',
+                message: 'Legal consent was rejected. This order cannot continue unless support resets or cancels it.',
+                failureReason: 'legal_consent_rejected',
+                flowRun: $flowRun
+            );
+        }
 
         if (! $order->patient_id) {
             return $this->response(

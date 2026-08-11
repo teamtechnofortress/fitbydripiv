@@ -20,6 +20,8 @@ use App\Services\DrNetwork\IntakeQuestions\IntakeAnswerService;
 use App\Services\DrNetwork\IntakeQuestions\IntakeQuestionSetResolver;
 use App\Services\DrNetwork\IntakeQuestions\PreviousIntakeAnswerService;
 use App\Services\DrNetwork\ProviderScheduling\ProviderSlotService;
+use App\Services\Consent\ConsentBlockingRuleEvaluator;
+use App\Services\Consent\OrderConsentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -35,6 +37,8 @@ class DrNetworkFlowController extends Controller
         private IntakeAnswerService $answerService,
         private ProviderSlotService $slotService,
         private ConsultationSubmissionService $submissionService,
+        private OrderConsentService $consentService,
+        private ConsentBlockingRuleEvaluator $consentBlockingRuleEvaluator,
     ) {}
 
     public function start(Order $order): JsonResponse
@@ -243,6 +247,10 @@ class DrNetworkFlowController extends Controller
     {
         $this->authorizeOrder($order);
 
+        if ($response = $this->requiredConsentResponse($order)) {
+            return $response;
+        }
+
         $record = $this->submissionService->submit($order);
         $flowRun = $order->flowRun?->fresh();
 
@@ -272,6 +280,38 @@ class DrNetworkFlowController extends Controller
             'provider_review_requirements' => $flowRun ? $this->providerReviewRequirements($flowRun) : [],
             'has_provider_review_requirements' => $flowRun ? $this->hasProviderReviewRequirements($flowRun) : false,
         ]);
+    }
+
+    private function requiredConsentResponse(Order $order): ?JsonResponse
+    {
+        $legalConsentRejection = $this->consentService->legalConsentRejection($order);
+
+        if ($legalConsentRejection) {
+            $rule = $this->consentBlockingRuleEvaluator->legalConsentRejectionRule();
+
+            return response()->json([
+                'message' => $rule['message'],
+                'code' => $rule['reason'],
+                'rule_key' => $rule['rule_key'],
+                'reason' => $rule['reason'],
+                'hard_stop_type' => $rule['hard_stop_type'],
+                'conditions' => $rule['conditions'],
+                'rejected_consent_key' => $legalConsentRejection->consent_key,
+                'rejected_at' => $legalConsentRejection->rejected_at,
+            ], 422);
+        }
+
+        $missingConsentKeys = $this->consentService->missingRequiredConsentKeys($order);
+
+        if ($missingConsentKeys === []) {
+            return null;
+        }
+
+        return response()->json([
+            'message' => 'Required legal consent must be accepted before continuing.',
+            'code' => 'required_consent_missing',
+            'missing_required_consent_keys' => $missingConsentKeys,
+        ], 422);
     }
 
     private function providerReviewRequirements(DrNetworkFlowRun $flowRun): array
