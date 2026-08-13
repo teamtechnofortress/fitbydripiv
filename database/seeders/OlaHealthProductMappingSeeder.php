@@ -91,7 +91,7 @@ class OlaHealthProductMappingSeeder extends Seeder
             [
                 'product_slug' => 'glutathione',
                 'service_name' => 'Glutathione',
-                'service_key' => 'fitbyshot-glutathione',
+                'service_key' => 'fitbyshot-glutathoine',
                 'service_id' => '1778',
                 'protocol' => 'glutathione_mic_b12_initial',
             ],

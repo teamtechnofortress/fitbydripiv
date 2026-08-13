@@ -105,13 +105,54 @@ class OlaHealthMapper
                     ?: $answer->resolvedQuestionText()
                     ?: $answer->resolvedQuestionKey()
                     ?: "Question {$answer->question_id}",
-                'answer' => $this->stringAnswer($answer->decodedAnswerValue()),
+                'answer' => $this->stringAnswer($this->displayAnswer($answer)),
                 'other_text' => '',
             ])
             ->values()
             ->all();
 
         return array_merge($answers, $this->mapProviderReviewRequirements($context));
+    }
+
+    private function displayAnswer(OrderIntakeAnswer $answer): mixed
+    {
+        $value = $answer->decodedAnswerValue();
+        $optionLabels = $this->optionLabels($answer);
+
+        if ($optionLabels === []) {
+            return $value;
+        }
+
+        if (is_array($value)) {
+            return array_map(
+                fn (mixed $selectedValue): string => $optionLabels[(string) $selectedValue] ?? (string) $selectedValue,
+                $value
+            );
+        }
+
+        return $optionLabels[(string) $value] ?? $value;
+    }
+
+    private function optionLabels(OrderIntakeAnswer $answer): array
+    {
+        $options = $answer->question?->options;
+
+        if (! is_array($options)) {
+            return [];
+        }
+
+        return collect($options)
+            ->mapWithKeys(function (array $option): array {
+                $value = $option['value'] ?? $option['id'] ?? null;
+                $label = $option['label'] ?? null;
+
+                if ($value === null || $label === null) {
+                    return [];
+                }
+
+                return [(string) $value => (string) $label];
+            })
+            ->all();
     }
 
     private function mapProviderReviewRequirements(array $context): array

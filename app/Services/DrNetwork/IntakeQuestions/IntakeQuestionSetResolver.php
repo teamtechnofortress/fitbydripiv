@@ -38,7 +38,7 @@ class IntakeQuestionSetResolver
 
         $questions = $questions
             ->reject(fn (NetworkIntakeQuestion $question): bool => $question->isHiddenFromPatient())
-            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->ruleEvaluator->applies($question, $context))
+            ->filter(fn (NetworkIntakeQuestion $question): bool => $this->appliesToPayload($question, $context))
             ->values();
 
         return [
@@ -48,5 +48,29 @@ class IntakeQuestionSetResolver
             'version' => $set->version,
             'questions' => $questions->toArray(),
         ];
+    }
+
+    private function appliesToPayload(NetworkIntakeQuestion $question, array $context): bool
+    {
+        if (! $question->is_conditional || empty($question->condition_rules)) {
+            return true;
+        }
+
+        if (! $this->hasGenderCondition($question->condition_rules)) {
+            return true;
+        }
+
+        return $this->ruleEvaluator->applies($question, $context);
+    }
+
+    private function hasGenderCondition(array $conditions): bool
+    {
+        foreach ($conditions as $condition) {
+            if (($condition['source'] ?? null) === 'patient.gender') {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
