@@ -40,6 +40,7 @@ class CheckoutService
                 'product_id' => $product->id,
                 'price' => $finalPrice,
                 'base_amount' => $basePrice,
+                'product_final_amount' => $finalPrice,
                 'coupon_discount_amount' => 0,
                 'final_amount' => $finalPrice,
                 'currency' => $this->pricingService->resolveCurrency($product),
@@ -108,7 +109,9 @@ class CheckoutService
 
         $purchaseType = $order->purchase_type;
         $basePrice = $this->pricingService->resolveBasePrice($pricingOption);
-        $pricingOptionFinalPrice = $this->pricingService->resolvePrice($pricingOption);
+        $productFinalAmount = $order->product_final_amount !== null
+            ? round((float) $order->product_final_amount, 2)
+            : $this->pricingService->resolvePrice($pricingOption);
         $frequencyMonths = $purchaseType === Order::PRICING_TYPE_SUBSCRIPTION
             ? $this->pricingService->resolveFrequencyMonths($pricingOption)
             : null;
@@ -118,7 +121,7 @@ class CheckoutService
         $couponDiscountAmount = round((float) ($order->coupon_discount_amount ?? 0), 2);
         $networkPatientFee = $this->networkPatientFee($order);
         $basePriceWithNetworkFee = round($basePrice + $networkPatientFee, 2);
-        $finalPrice = max(0, round($pricingOptionFinalPrice + $networkPatientFee - $couponDiscountAmount, 2));
+        $finalPrice = max(0, round($productFinalAmount + $networkPatientFee - $couponDiscountAmount, 2));
 
         if ($purchaseType === Order::PRICING_TYPE_SUBSCRIPTION && ! $recurring) {
             abort(422, 'Selected subscription option is not configured for recurring checkout.');
@@ -127,10 +130,13 @@ class CheckoutService
         if (
             (float) $order->price !== (float) $finalPrice
             || (float) $order->base_amount !== (float) $basePriceWithNetworkFee
+            || $order->product_final_amount === null
+            || (float) $order->product_final_amount !== (float) $productFinalAmount
             || (float) $order->final_amount !== (float) $finalPrice
             || $order->frequency_months !== $frequencyMonths
         ) {
             $order->base_amount = $basePriceWithNetworkFee;
+            $order->product_final_amount = $productFinalAmount;
             $order->final_amount = $finalPrice;
             $order->price = $finalPrice;
             $order->frequency_months = $frequencyMonths;
@@ -154,6 +160,7 @@ class CheckoutService
                 'product_id' => (string) $product->id,
                 'pricing_option_id' => (string) $pricingOption->id,
                 'frequency_months' => $frequencyMonths,
+                'product_final_amount' => number_format((float) $order->product_final_amount, 2, '.', ''),
                 'dr_network_fee_amount' => number_format((float) ($order->dr_network_fee_amount ?? 0), 2, '.', ''),
                 'dr_network_patient_fee_amount' => number_format($networkPatientFee, 2, '.', ''),
             ],
@@ -196,6 +203,7 @@ class CheckoutService
                     'product_id' => (string) $product->id,
                     'pricing_option_id' => (string) $pricingOption->id,
                     'frequency_months' => $frequencyMonths,
+                    'product_final_amount' => number_format((float) $order->product_final_amount, 2, '.', ''),
                     'dr_network_fee_amount' => number_format((float) ($order->dr_network_fee_amount ?? 0), 2, '.', ''),
                     'dr_network_patient_fee_amount' => number_format($networkPatientFee, 2, '.', ''),
                 ], $subscriptionMetadata),
@@ -207,6 +215,7 @@ class CheckoutService
                     'order_uuid' => $order->order_uuid,
                     'patient_id' => (string) ($order->patient_id ?? ''),
                     'pricing_option_id' => (string) $pricingOption->id,
+                    'product_final_amount' => number_format((float) $order->product_final_amount, 2, '.', ''),
                 ],
             ];
         }
@@ -328,6 +337,7 @@ class CheckoutService
             'pricing_type' => $order->pricing_type,
             'price' => $order->price,
             'base_amount' => $order->base_amount,
+            'product_final_amount' => $order->product_final_amount,
             'dr_network_fee_amount' => $order->dr_network_fee_amount,
             'dr_network_patient_fee_amount' => $order->dr_network_patient_fee_amount,
             'final_amount' => $order->final_amount,

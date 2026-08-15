@@ -154,6 +154,10 @@ class CouponService
 
     protected function resolveOriginalAmount(Order $order): float
     {
+        if ($order->product_final_amount !== null) {
+            return round((float) $order->product_final_amount + $this->networkPatientFee($order), 2);
+        }
+
         if ($order->pricingOption) {
             return round((float) $order->pricingOption->final_price + $this->networkPatientFee($order), 2);
         }

@@ -301,6 +301,9 @@ class StripeWebhookService
         $baseAmount = round((float) ($subscription->base_recurring_amount ?? $subscription->discounted_recurring_amount ?? 0), 2);
         $finalAmount = round(((float) ($invoice->amount_paid ?? 0)) / 100, 2);
         $sourceOrder = $subscription->order;
+        $productFinalAmount = $sourceOrder?->product_final_amount !== null
+            ? round((float) $sourceOrder->product_final_amount, 2)
+            : max(0, round($finalAmount - (float) ($sourceOrder?->dr_network_patient_fee_amount ?? 0), 2));
 
         $order = Order::create([
             'patient_id' => $subscription->patient_id,
@@ -319,6 +322,7 @@ class StripeWebhookService
             'purchase_type' => 'subscription',
             'pricing_type' => $sourceOrder?->pricing_type ?? 'subscription',
             'pricing_option_id' => $subscription->pricing_option_id ?? $sourceOrder?->pricing_option_id,
+            'product_final_amount' => $productFinalAmount,
             'base_amount' => $baseAmount,
             'coupon_discount_amount' => 0,
             'final_amount' => $finalAmount,

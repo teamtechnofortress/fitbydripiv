@@ -18,7 +18,7 @@ class SubscriptionAdminController extends Controller
 
         $query = Subscription::query()
             ->with([
-                'order:id,order_uuid,price,currency,status,payment_status',
+                'order:id,order_uuid,product_id,price,product_final_amount,currency,status,payment_status',
                 'patient:id,first_name,last_name,email',
                 'order.product:id,name,slug',
             ])
@@ -74,6 +74,7 @@ class SubscriptionAdminController extends Controller
                     'id' => $order->id,
                     'order_uuid' => $order->order_uuid,
                     'price' => $order->price,
+                    'product_final_amount' => $order->product_final_amount,
                     'currency' => $order->currency,
                     'status' => $order->status,
                     'payment_status' => $order->payment_status,
@@ -147,6 +148,7 @@ class SubscriptionAdminController extends Controller
                 'id' => $order->id,
                 'order_uuid' => $order->order_uuid,
                 'price' => $order->price,
+                'product_final_amount' => $order->product_final_amount,
                 'currency' => $order->currency,
                 'status' => $order->status,
                 'payment_status' => $order->payment_status,

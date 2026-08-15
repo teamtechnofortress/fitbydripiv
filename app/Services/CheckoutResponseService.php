@@ -62,6 +62,7 @@ class CheckoutResponseService
                 'payment_status' => $order->payment_status,
                 'currency' => $order->currency,
                 'base_amount' => $order->base_amount,
+                'product_final_amount' => $order->product_final_amount,
                 'coupon_discount_amount' => $order->coupon_discount_amount,
                 'dr_network_fee_amount' => $order->dr_network_fee_amount,
                 'dr_network_patient_fee_amount' => $order->dr_network_patient_fee_amount,

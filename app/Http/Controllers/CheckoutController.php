@@ -96,6 +96,12 @@ class CheckoutController extends Controller
             'purchase_type' => $order->purchase_type,
             'frequency_months' => $order->frequency_months,
             'pricing_type' => $order->pricing_type,
+            'price' => $order->price,
+            'base_amount' => $order->base_amount,
+            'product_final_amount' => $order->product_final_amount,
+            'coupon_discount_amount' => $order->coupon_discount_amount,
+            'final_amount' => $order->final_amount,
+            'currency' => $order->currency,
             'product' => $order->product ? [
                 'id' => $order->product->id,
                 'name' => $order->product->name,
