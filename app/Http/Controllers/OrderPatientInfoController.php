@@ -15,6 +15,7 @@ use App\Services\IdempotencyService;
 use App\Services\OrderJourneyService;
 use App\Services\StateCodeResolver;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -252,9 +253,16 @@ class OrderPatientInfoController extends Controller
     private function findPatientByContact(array $validated): ?Patient
     {
         $email = trim((string) ($validated['email'] ?? ''));
-        $phone = trim((string) ($validated['phone'] ?? ''));
+        $phone = trim((string) ($validated['cell'] ?? ''));
+
+        if ($phone === '') {
+            $phone = trim((string) ($validated['phone'] ?? ''));
+        }
+
+        $dateOfBirth = Carbon::parse($validated['dateOfBirth'])->toDateString();
 
         return Patient::query()
+            ->whereDate('birthday', $dateOfBirth)
             ->where(function ($query) use ($email, $phone): void {
                 if ($email !== '') {
                     $query->orWhere('email', $email);
@@ -272,6 +280,8 @@ class OrderPatientInfoController extends Controller
     private function requiredPatientInfoPayload(Patient $patient): array
     {
         return [
+            'firstName' => $patient->first_name,
+            'lastName' => $patient->last_name,
             'phone' => $patient->phone,
             'state' => $patient->state,
             'email' => $patient->email,
@@ -290,6 +300,8 @@ class OrderPatientInfoController extends Controller
     {
         return [
             'id' => $patient->id,
+            'first_name' => $patient->first_name,
+            'last_name' => $patient->last_name,
             'email' => $patient->email,
             'phone' => $patient->phone,
             'birthday' => $patient->birthday,
