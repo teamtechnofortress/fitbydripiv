@@ -404,7 +404,10 @@ class OlaHealthIntakeQuestionsSeeder extends Seeder
             $this->question('glp1_taken_as_prescribed', 'Have you been taking this medication as prescribed?', 21, NetworkIntakeQuestion::INPUT_RADIO, $this->yesNoOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']]),
             $this->question('glp1_non_prescribed_use_details', 'How have you been taking your medication?', 22, NetworkIntakeQuestion::INPUT_LONG_TEXT, isConditional: true, conditionRules: [['source' => 'answers.glp1_taken_as_prescribed', 'operator' => 'equals', 'value' => 'no']]),
             $this->question('glp1_dose_preference', 'How would you like to continue your dosing plan for this prescription?', 23, NetworkIntakeQuestion::INPUT_SELECT, $this->dosePreferenceOptions(), isConditional: true, conditionRules: [['source' => 'answers.glp1_recent_use', 'operator' => 'equals', 'value' => 'yes']], metadata: ['system_gap' => 'Single-month versus three-month branching is not currently available in rule context.']),
-            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 24, NetworkIntakeQuestion::INPUT_TEXT),
+            $this->question('glp1_patient_signature', 'Enter your full legal name as it appears exactly on your official ID', 24, NetworkIntakeQuestion::INPUT_TEXT, metadata: [
+                'frontend_hidden' => true,
+                'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_PATIENT_NAME,
+            ]),
             $this->question('glp1_signature_date', 'Signature date', 25, NetworkIntakeQuestion::INPUT_DATE, metadata: [
                 'frontend_hidden' => true,
                 'auto_fill' => NetworkIntakeQuestion::AUTO_FILL_CURRENT_DATE,

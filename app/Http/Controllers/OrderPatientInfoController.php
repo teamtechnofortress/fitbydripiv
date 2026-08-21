@@ -118,7 +118,7 @@ class OrderPatientInfoController extends Controller
             return response()->json([
                 'message' => 'Required patient information must be submitted first.',
                 'errors' => [
-                    'patient_info' => ['Submit date of birth, email, phone, state, and gender before additional patient information.'],
+                    'patient_info' => ['Submit first name, last name, date of birth, email, phone, state, and gender before additional patient information.'],
                 ],
             ], 422);
         }
@@ -156,6 +156,8 @@ class OrderPatientInfoController extends Controller
 
             $patient = Patient::firstOrNew(['email' => $validated['email']]);
             $patient->fill([
+                'first_name' => $validated['firstName'],
+                'last_name' => $validated['lastName'],
                 'state' => $validated['state'],
                 'phone' => $phone !== '' ? $phone : null,
                 'birthday' => $validated['dateOfBirth'],
@@ -212,8 +214,6 @@ class OrderPatientInfoController extends Controller
             $patient = $order->patient;
 
             $patient->fill([
-                'first_name' => $validated['firstName'],
-                'last_name' => $validated['lastName'],
                 'address' => $validated['address'],
                 'city' => $validated['city'],
                 'zip' => $validated['zip'],
@@ -319,8 +319,6 @@ class OrderPatientInfoController extends Controller
     private function additionalPatientInfoPayload(Patient $patient): array
     {
         return [
-            'firstName' => $patient->first_name,
-            'lastName' => $patient->last_name,
             'address' => $patient->address,
             'city' => $patient->city,
             'zip' => $patient->zip,
@@ -331,8 +329,6 @@ class OrderPatientInfoController extends Controller
     {
         return [
             'id' => $patient->id,
-            'first_name' => $patient->first_name,
-            'last_name' => $patient->last_name,
             'address' => $patient->address,
             'city' => $patient->city,
             'zip' => $patient->zip,

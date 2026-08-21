@@ -14,6 +14,8 @@ class SaveOrderPatientInfoRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'firstName' => ['required', 'string', 'max:255'],
+            'lastName' => ['required', 'string', 'max:255'],
             'state' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'dateOfBirth' => ['required', 'date'],
