@@ -22,17 +22,17 @@ class OrderConsentController extends Controller
 
         $consent = $this->consentService->record($order, $request->validated(), $request);
         $decision = $consent->accepted ? 'accepted' : 'rejected';
-        $blockingRule = $consent->accepted ? null : $this->blockingRuleEvaluator->legalConsentRejectionRule();
+        $blockingRule = $consent->accepted ? null : $this->blockingRuleEvaluator->termsConsentRejectionRule();
 
         $payload = [
             'submitted' => true,
             'decision' => $decision,
             'accepted' => $consent->accepted,
             'hard_stop' => ! $consent->accepted,
-            'code' => $consent->accepted ? 'legal_consent_accepted' : 'legal_consent_rejected',
+            'code' => $consent->accepted ? 'terms_consent_accepted' : 'terms_consent_rejected',
             'message' => $consent->accepted
-                ? 'Legal consent accepted.'
-                : 'Legal consent rejected.',
+                ? 'Terms consent accepted.'
+                : 'Terms consent rejected.',
             'journey_url' => "/api/v1/orders/{$order->order_uuid}/journey",
             'consent' => $this->payload($consent),
         ];

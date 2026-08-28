@@ -7,7 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrderConsent extends Model
 {
-    public const KEY_TELEHEALTH_LEGAL_CONSENT = 'telehealth_legal_consent';
+    public const KEY_TELEHEALTH_TERMS_CONSENT = 'telehealth_terms_consent';
+
+    public const TITLE_FITBYSHOT_TERMS_CONSENT = 'FitByShot Terms Consent';
+
+    public const VERSION_FITBYSHOT_TERMS_CONSENT = '2026-08-11';
 
     protected $fillable = [
         'order_id',

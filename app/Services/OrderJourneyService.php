@@ -18,16 +18,16 @@ class OrderJourneyService
 
         $flowRun = $order->flowRun;
 
-        if ($this->consentService->hasRejectedLegalConsent($order)) {
+        if ($this->consentService->hasRejectedTermsConsent($order)) {
             return $this->response(
                 order: $order,
-                phase: 'legal_consent',
-                currentStepKey: 'legal_consent_rejected',
+                phase: 'terms_consent',
+                currentStepKey: 'terms_consent_rejected',
                 isReady: false,
-                journeyStatus: 'legal_consent_rejected',
+                journeyStatus: 'terms_consent_rejected',
                 nextAction: 'contact_support',
-                message: 'Legal consent was rejected. This order cannot continue unless support resets or cancels it.',
-                failureReason: 'legal_consent_rejected',
+                message: 'Terms consent was rejected. This order cannot continue unless support resets or cancels it.',
+                failureReason: 'terms_consent_rejected',
                 flowRun: $flowRun
             );
         }

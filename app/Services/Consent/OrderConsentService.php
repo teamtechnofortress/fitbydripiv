@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class OrderConsentService
 {
     public const REQUIRED_CONSENT_KEYS = [
-        OrderConsent::KEY_TELEHEALTH_LEGAL_CONSENT,
+        OrderConsent::KEY_TELEHEALTH_TERMS_CONSENT,
     ];
 
     public function __construct(
@@ -22,11 +22,11 @@ class OrderConsentService
     {
         $accepted = (bool) $data['accepted'];
 
-        if ($this->isLegalConsentKey($data['consent_key'])) {
-            $existingRejection = $this->legalConsentRejection($order);
+        if ($this->isTermsConsentKey($data['consent_key'])) {
+            $existingRejection = $this->termsConsentRejection($order);
 
             if ($existingRejection) {
-                $this->applyLegalConsentRejectionHardStop($order, $existingRejection);
+                $this->applyTermsConsentRejectionHardStop($order, $existingRejection);
 
                 return $existingRejection;
             }
@@ -41,7 +41,7 @@ class OrderConsentService
             [
                 'patient_id' => $order->patient_id,
                 'consultation_record_id' => $order->consultationRecord?->id,
-                'consent_title' => $data['consent_title'] ?? null,
+                'consent_title' => $data['consent_title'] ?? OrderConsent::TITLE_FITBYSHOT_TERMS_CONSENT,
                 'content_hash' => $data['content_hash'],
                 'accepted' => $accepted,
                 'accepted_at' => $accepted ? now() : null,
@@ -52,32 +52,32 @@ class OrderConsentService
             ]
         );
 
-        if ($this->isLegalConsentKey($consent->consent_key) && ! $consent->accepted) {
-            $this->applyLegalConsentRejectionHardStop($order, $consent);
+        if ($this->isTermsConsentKey($consent->consent_key) && ! $consent->accepted) {
+            $this->applyTermsConsentRejectionHardStop($order, $consent);
         }
 
         return $consent;
     }
 
-    public function legalConsentRejection(Order $order): ?OrderConsent
+    public function termsConsentRejection(Order $order): ?OrderConsent
     {
         return OrderConsent::query()
             ->where('order_id', $order->id)
-            ->where('consent_key', OrderConsent::KEY_TELEHEALTH_LEGAL_CONSENT)
+            ->where('consent_key', OrderConsent::KEY_TELEHEALTH_TERMS_CONSENT)
             ->where('accepted', false)
             ->whereNotNull('rejected_at')
             ->latest('id')
             ->first();
     }
 
-    public function hasRejectedLegalConsent(Order $order): bool
+    public function hasRejectedTermsConsent(Order $order): bool
     {
-        return $this->legalConsentRejection($order) !== null;
+        return $this->termsConsentRejection($order) !== null;
     }
 
     public function missingRequiredConsentKeys(Order $order): array
     {
-        if ($this->hasRejectedLegalConsent($order)) {
+        if ($this->hasRejectedTermsConsent($order)) {
             return self::REQUIRED_CONSENT_KEYS;
         }
 
@@ -97,12 +97,12 @@ class OrderConsentService
         return $this->missingRequiredConsentKeys($order) === [];
     }
 
-    private function isLegalConsentKey(string $consentKey): bool
+    private function isTermsConsentKey(string $consentKey): bool
     {
-        return $consentKey === OrderConsent::KEY_TELEHEALTH_LEGAL_CONSENT;
+        return $consentKey === OrderConsent::KEY_TELEHEALTH_TERMS_CONSENT;
     }
 
-    private function applyLegalConsentRejectionHardStop(Order $order, OrderConsent $consent): void
+    private function applyTermsConsentRejectionHardStop(Order $order, OrderConsent $consent): void
     {
         $order->loadMissing('flowRun');
 
@@ -112,8 +112,8 @@ class OrderConsentService
 
         $this->failureService->failOrder(
             $order,
-            ConsentBlockingRuleEvaluator::REASON_LEGAL_CONSENT_REJECTED,
-            $this->blockingRuleEvaluator->legalConsentRejectionContext($consent)
+            ConsentBlockingRuleEvaluator::REASON_TERMS_CONSENT_REJECTED,
+            $this->blockingRuleEvaluator->termsConsentRejectionContext($consent)
         );
     }
 }

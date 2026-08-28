@@ -284,10 +284,10 @@ class DrNetworkFlowController extends Controller
 
     private function requiredConsentResponse(Order $order): ?JsonResponse
     {
-        $legalConsentRejection = $this->consentService->legalConsentRejection($order);
+        $termsConsentRejection = $this->consentService->termsConsentRejection($order);
 
-        if ($legalConsentRejection) {
-            $rule = $this->consentBlockingRuleEvaluator->legalConsentRejectionRule();
+        if ($termsConsentRejection) {
+            $rule = $this->consentBlockingRuleEvaluator->termsConsentRejectionRule();
 
             return response()->json([
                 'message' => $rule['message'],
@@ -296,8 +296,8 @@ class DrNetworkFlowController extends Controller
                 'reason' => $rule['reason'],
                 'hard_stop_type' => $rule['hard_stop_type'],
                 'conditions' => $rule['conditions'],
-                'rejected_consent_key' => $legalConsentRejection->consent_key,
-                'rejected_at' => $legalConsentRejection->rejected_at,
+                'rejected_consent_key' => $termsConsentRejection->consent_key,
+                'rejected_at' => $termsConsentRejection->rejected_at,
             ], 422);
         }
 
@@ -308,7 +308,7 @@ class DrNetworkFlowController extends Controller
         }
 
         return response()->json([
-            'message' => 'Required legal consent must be accepted before continuing.',
+            'message' => 'Required terms consent must be accepted before continuing.',
             'code' => 'required_consent_missing',
             'missing_required_consent_keys' => $missingConsentKeys,
         ], 422);

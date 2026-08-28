@@ -6,30 +6,30 @@ use App\Models\OrderConsent;
 
 class ConsentBlockingRuleEvaluator
 {
-    public const RULE_LEGAL_CONSENT_REJECTED = 'telehealth_legal_consent_rejected';
+    public const RULE_TERMS_CONSENT_REJECTED = 'telehealth_terms_consent_rejected';
 
-    public const REASON_LEGAL_CONSENT_REJECTED = 'legal_consent_rejected';
+    public const REASON_TERMS_CONSENT_REJECTED = 'terms_consent_rejected';
 
-    public const HARD_STOP_LEGAL_CONSENT_REJECTED = 'legal_consent_rejected';
+    public const HARD_STOP_TERMS_CONSENT_REJECTED = 'terms_consent_rejected';
 
-    public function legalConsentRejectionRule(): array
+    public function termsConsentRejectionRule(): array
     {
         return $this->blockingRule(
-            self::RULE_LEGAL_CONSENT_REJECTED,
-            self::REASON_LEGAL_CONSENT_REJECTED,
-            'Legal consent was rejected. This order cannot continue unless support resets or cancels it.',
+            self::RULE_TERMS_CONSENT_REJECTED,
+            self::REASON_TERMS_CONSENT_REJECTED,
+            'Terms consent was rejected. This order cannot continue unless support resets or cancels it.',
             [[
-                'source' => 'consents.telehealth_legal_consent.accepted',
+                'source' => 'consents.telehealth_terms_consent.accepted',
                 'operator' => 'equals',
                 'value' => false,
             ]],
-            self::HARD_STOP_LEGAL_CONSENT_REJECTED
+            self::HARD_STOP_TERMS_CONSENT_REJECTED
         );
     }
 
-    public function legalConsentRejectionContext(OrderConsent $consent): array
+    public function termsConsentRejectionContext(OrderConsent $consent): array
     {
-        $rule = $this->legalConsentRejectionRule();
+        $rule = $this->termsConsentRejectionRule();
 
         return [
             'failure_message' => $rule['message'],
