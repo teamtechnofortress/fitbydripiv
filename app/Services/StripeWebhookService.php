@@ -9,6 +9,7 @@ use App\Models\StripeWebhookEvent;
 use App\Models\Subscription;
 use App\Services\DrNetwork\Flow\FlowRunner;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Stripe\Stripe;
@@ -116,18 +117,14 @@ class StripeWebhookService
             'stripe_payment_intent_id' => $paymentIntentId,
         ]);
 
-        // Record the payment only once — avoid duplicates if this event is
-        // re-delivered.
-        if (! Payment::where('order_id', $order->id)->where('status', 'paid')->exists()) {
-            Payment::create([
-                'order_id' => $order->id,
-                'stripe_payment_intent_id' => $paymentIntentId,
-                'amount' => $order->price,
-                'currency' => $order->currency,
-                'status' => 'paid',
-                'failure_reason' => null,
-            ]);
-        }
+        $this->recordPaymentOnce([
+            'order_id' => $order->id,
+            'stripe_payment_intent_id' => $paymentIntentId,
+            'amount' => $order->price,
+            'currency' => $order->currency,
+            'status' => 'paid',
+            'failure_reason' => null,
+        ]);
 
         $webhookEvent->webhookable()->associate($order);
         $webhookEvent->save();
@@ -265,7 +262,7 @@ class StripeWebhookService
             }
 
             if ($originalOrder && ! Payment::where('order_id', $originalOrder->id)->where('status', 'paid')->exists()) {
-                Payment::create([
+                $this->recordPaymentOnce([
                     'order_id' => $originalOrder->id,
                     'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
                     'amount' => round(((float) ($invoice->amount_paid ?? 0)) / 100, 2),
@@ -333,7 +330,7 @@ class StripeWebhookService
             'stripe_invoice_id' => $invoice->id,
         ]);
 
-        Payment::create([
+        $this->recordPaymentOnce([
             'order_id' => $order->id,
             'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
             'amount' => $order->price,
@@ -400,7 +397,7 @@ class StripeWebhookService
         if ($latestOrder) {
             $latestOrder->update(['payment_status' => 'failed']);
 
-            Payment::create([
+            $this->recordPaymentOnce([
                 'order_id' => $latestOrder->id,
                 'stripe_payment_intent_id' => $invoice->payment_intent ?? null,
                 'amount' => round(((float) ($invoice->amount_due ?? 0)) / 100, 2),
@@ -532,7 +529,7 @@ class StripeWebhookService
                 ]);
             }
 
-            $payment = Payment::create([
+            $payment = $this->recordPaymentOnce([
                 'order_id' => $order->id,
                 'stripe_payment_intent_id' => $paymentIntent->id,
                 'amount' => round(((float) ($paymentIntent->amount_received ?? 0)) / 100, 2),
@@ -573,7 +570,7 @@ class StripeWebhookService
         }
 
         if (! $payment) {
-            $payment = Payment::create([
+            $payment = $this->recordPaymentOnce([
                 'order_id' => $order->id,
                 'stripe_payment_intent_id' => $paymentIntent->id,
                 'amount' => round(((float) ($paymentIntent->amount ?? 0)) / 100, 2),
@@ -597,6 +594,65 @@ class StripeWebhookService
     // ---------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------
+
+    protected function recordPaymentOnce(array $attributes): Payment
+    {
+        $paymentIntentId = $attributes['stripe_payment_intent_id'] ?? null;
+
+        if (! empty($paymentIntentId)) {
+            $payment = Payment::where('stripe_payment_intent_id', $paymentIntentId)->first();
+
+            if ($payment) {
+                return $this->updateRecordedPayment($payment, $attributes);
+            }
+
+            try {
+                return Payment::create($attributes);
+            } catch (QueryException $e) {
+                if (! $this->isUniqueConstraintViolation($e)) {
+                    throw $e;
+                }
+
+                $payment = Payment::where('stripe_payment_intent_id', $paymentIntentId)->first();
+
+                if (! $payment) {
+                    throw $e;
+                }
+
+                return $this->updateRecordedPayment($payment, $attributes);
+            }
+        }
+
+        return Payment::firstOrCreate(
+            [
+                'order_id' => $attributes['order_id'],
+                'status' => $attributes['status'],
+            ],
+            $attributes
+        );
+    }
+
+    private function updateRecordedPayment(Payment $payment, array $attributes): Payment
+    {
+        if ($payment->status === 'paid' && ($attributes['status'] ?? null) !== 'paid') {
+            return $payment;
+        }
+
+        $payment->fill($attributes);
+
+        if ($payment->isDirty()) {
+            $payment->save();
+        }
+
+        return $payment;
+    }
+
+    private function isUniqueConstraintViolation(QueryException $e): bool
+    {
+        return ($e->errorInfo[0] ?? null) === '23000'
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed')
+            || str_contains($e->getMessage(), 'Duplicate entry');
+    }
 
     /**
      * Cancel the Stripe subscription remotely and mark it completed locally.
