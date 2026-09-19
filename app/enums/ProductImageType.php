@@ -4,6 +4,10 @@ namespace App\enums;
 
 enum ProductImageType: string
 {
+    public const MIN_SLIDE_DURATION_MS = 500;
+    public const MAX_SLIDE_DURATION_MS = 60000;
+    public const DEFAULT_SLIDE_DURATION_MS = 5000;
+
     case COVER = 'cover';
     case PRODUCT_DETAIL_MAIN = 'product_detail_main';
     case FEATURED_CARD = 'featured_card';
@@ -30,7 +34,7 @@ enum ProductImageType: string
             self::COVER,
             self::FEATURED_CARD=> 1,
             self::PRODUCT_SELECT_CARD => 1,
-            self::PRODUCT_DETAIL_MAIN => 1,
+            self::PRODUCT_DETAIL_MAIN => 5,
         };
     }
 
@@ -52,15 +56,34 @@ enum ProductImageType: string
         };
     }
 
+    public function supportsSlideDuration(): bool
+    {
+        return $this === self::PRODUCT_DETAIL_MAIN;
+    }
+
     public function frontendConfig(): array
     {
-        return [
+        $config = [
             'type' => $this->value,
             'label' => $this->label(),
             'required' => $this->isRequired(),
             'max_images' => $this->maxImages(),
             'used_for' => $this->usedFor(),
+            'supports_slide_duration' => $this->supportsSlideDuration(),
         ];
+
+        if ($this->supportsSlideDuration()) {
+            $config['slide_duration'] = [
+                'field' => 'duration_ms',
+                'label' => 'Slide Duration',
+                'unit' => 'milliseconds',
+                'min' => self::MIN_SLIDE_DURATION_MS,
+                'max' => self::MAX_SLIDE_DURATION_MS,
+                'default' => self::DEFAULT_SLIDE_DURATION_MS,
+            ];
+        }
+
+        return $config;
     }
 
     public static function frontendConfigs(): array

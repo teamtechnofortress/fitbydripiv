@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\enums\ProductImageType;
 use App\enums\SectionType;
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
@@ -42,8 +43,8 @@ class CmsPublicController extends Controller
                 'researchLinks',
                 'ingredients',
                 'faqs' => function ($q) {
-                $q->where('is_active', true);
-            },
+                    $q->where('is_active', true);
+                },
             ])
             ->live()
             ->where('slug', $slug)
@@ -54,9 +55,23 @@ class CmsPublicController extends Controller
         }
 
         $data = $product->toArray();
+        $data['images'] = $product->images
+            ->filter(function ($image) {
+                return $image->image_type === ProductImageType::PRODUCT_DETAIL_MAIN;
+            })
+            ->sortBy('sort_order')
+            ->map(fn ($image) => ProductSectionImage::serialize($image))
+            ->values()
+            ->all();
         $data['cover_image'] = ProductSectionImage::serialize(
             ProductSectionImage::resolveForSection($product, SectionType::PRODUCT_DETAILS)
         );
+
+        Log::info("Public product by slug response:\n" . json_encode([
+            'slug' => $slug,
+            'product_id' => $product->id,
+            'product' => $data,
+        ], JSON_PRETTY_PRINT));
 
         return response()->json(['success' => true, 'data' => $data]);
     }

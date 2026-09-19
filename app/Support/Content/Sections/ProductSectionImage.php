@@ -43,6 +43,7 @@ class ProductSectionImage
                 ? $image->image_type->value
                 : $image->image_type,
             'sort_order' => $image->sort_order,
+            'duration_ms' => $image->duration_ms,
         ];
     }
 }

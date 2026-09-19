@@ -31,6 +31,7 @@ class StoreProductStep1Request extends FormRequest
             'images.*.image_url' => 'required|string|max:500',
             'images.*.image_type' => ['required', Rule::in(ProductImageType::values())],
             'images.*.sort_order' => 'nullable|integer',
+            'images.*.duration_ms' => 'nullable|integer|min:' . ProductImageType::MIN_SLIDE_DURATION_MS . '|max:' . ProductImageType::MAX_SLIDE_DURATION_MS,
         ];
     }
 }

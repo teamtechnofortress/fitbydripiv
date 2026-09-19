@@ -381,6 +381,9 @@ class ProductService
                 'image_url' => $imageData['image_url'],
                 'image_type' => $imageData['image_type'],
                 'sort_order' => $imageData['sort_order'] ?? $index + 1,
+                'duration_ms' => ($imageData['image_type'] ?? null) === ProductImageType::PRODUCT_DETAIL_MAIN->value
+                    ? ($imageData['duration_ms'] ?? null)
+                    : null,
             ]);
 
             if (($imageData['image_type'] ?? null) === ProductImageType::COVER->value) {

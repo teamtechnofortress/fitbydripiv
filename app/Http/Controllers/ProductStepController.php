@@ -73,24 +73,27 @@ class ProductStepController extends Controller
     {
         $product->loadMissing(['coverImage', 'images']);
 
-        $imagesByType = $product->images->groupBy(function ($image) {
-            return $image->image_type instanceof ProductImageType
-                ? $image->image_type->value
-                : $image->image_type;
-        });
+        $imagesByType = $product->images
+            ->sortBy('sort_order')
+            ->groupBy(function ($image) {
+                return $image->image_type instanceof ProductImageType
+                    ? $image->image_type->value
+                    : $image->image_type;
+            });
 
-        return [
-            'cover' => $product->coverImage,
-            'product_detail_main' => $imagesByType
-                ->get(ProductImageType::PRODUCT_DETAIL_MAIN->value, collect())
-                ->first(),
-            'featured_card' => $imagesByType
-                ->get(ProductImageType::FEATURED_CARD->value, collect())
-                ->first(),
-            'product_select_card' => $imagesByType
-                ->get(ProductImageType::PRODUCT_SELECT_CARD->value, collect())
-                ->first(),
-        ];
+        return collect(ProductImageType::frontendConfigs())
+            ->mapWithKeys(function (array $config) use ($imagesByType) {
+                $type = $config['type'];
+
+                return [
+                    $type => $imagesByType
+                        ->get($type, collect())
+                        ->take($config['max_images'])
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->all();
     }
 
     public function step2(StoreProductStep2Request $request): JsonResponse

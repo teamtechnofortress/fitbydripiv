@@ -22,10 +22,12 @@ class ProductImage extends Model
         'image_url',
         'image_type',
         'sort_order',
+        'duration_ms',
     ];
 
     protected $casts = [
         'sort_order' => 'integer',
+        'duration_ms' => 'integer',
         'image_type' => ProductImageType::class,
     ];
 
