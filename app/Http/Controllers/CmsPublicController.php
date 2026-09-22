@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\enums\ProductImageType;
 use App\enums\SectionType;
 use App\Models\CmsCategory;
 use App\Models\CmsContactSubmission;
@@ -55,14 +54,7 @@ class CmsPublicController extends Controller
         }
 
         $data = $product->toArray();
-        $data['images'] = $product->images
-            ->filter(function ($image) {
-                return $image->image_type === ProductImageType::PRODUCT_DETAIL_MAIN;
-            })
-            ->sortBy('sort_order')
-            ->map(fn ($image) => ProductSectionImage::serialize($image))
-            ->values()
-            ->all();
+        $data['images'] = ProductSectionImage::resolveGalleryForSection($product, SectionType::PRODUCT_DETAILS);
         $data['cover_image'] = ProductSectionImage::serialize(
             ProductSectionImage::resolveForSection($product, SectionType::PRODUCT_DETAILS)
         );

@@ -61,6 +61,11 @@ enum ProductImageType: string
         return $this === self::PRODUCT_DETAIL_MAIN;
     }
 
+    public function supportsEnabledToggle(): bool
+    {
+        return $this !== self::COVER;
+    }
+
     public function frontendConfig(): array
     {
         $config = [
@@ -70,6 +75,7 @@ enum ProductImageType: string
             'max_images' => $this->maxImages(),
             'used_for' => $this->usedFor(),
             'supports_slide_duration' => $this->supportsSlideDuration(),
+            'supports_enabled_toggle' => $this->supportsEnabledToggle(),
         ];
 
         if ($this->supportsSlideDuration()) {

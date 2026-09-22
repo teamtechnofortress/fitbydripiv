@@ -41,9 +41,10 @@ class ProductDetailsSection
                     'usage_instructions' => $product->usage_instructions,
                     'clinical_research_description' => $product->clinical_research_description,
                     'cover_image' => ProductSectionImage::serialize($sectionImage),
-                    'images' => $product->images->map(
-                        fn ($image) => ProductSectionImage::serialize($image)
-                    )->values()->all(),
+                    'images' => ProductSectionImage::resolveGalleryForSection(
+                        $product,
+                        $section->type ?? $section->getRawOriginal('type')
+                    ),
                     'benefits' => $product->benefits->map(fn ($benefit) => [
                         'id' => $benefit->id,
                         'benefit_text' => $benefit->benefit_text,

@@ -9,6 +9,7 @@ use App\Http\Requests\StoreProductStep4Request;
 use App\Http\Requests\StoreProductStep5Request;
 use App\Http\Requests\StoreProductStep1Request;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Services\ProductService;
 use Illuminate\Http\JsonResponse;
 
@@ -88,12 +89,26 @@ class ProductStepController extends Controller
                 return [
                     $type => $imagesByType
                         ->get($type, collect())
-                        ->take($config['max_images'])
+                        ->map(fn ($image) => $this->formatProductImage($image))
                         ->values()
                         ->all(),
                 ];
             })
             ->all();
+    }
+
+    private function formatProductImage(ProductImage $image): array
+    {
+        return [
+            'id' => $image->id,
+            'image_url' => $image->image_url,
+            'image_type' => $image->image_type instanceof ProductImageType
+                ? $image->image_type->value
+                : $image->image_type,
+            'sort_order' => $image->sort_order,
+            'duration_ms' => $image->duration_ms,
+            'is_enabled' => $image->is_enabled,
+        ];
     }
 
     public function step2(StoreProductStep2Request $request): JsonResponse

@@ -116,8 +116,14 @@ class Product extends Model
 
     public function getImageByType(ProductImageType|string $type): ?ProductImage
     {
+        $typeValue = $type instanceof ProductImageType ? $type->value : $type;
+
         return $this->images()
             ->ofType($type)
+            ->when(
+                $typeValue !== ProductImageType::COVER->value,
+                fn (Builder $query) => $query->enabled()
+            )
             ->first();
     }
 

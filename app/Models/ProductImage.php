@@ -23,11 +23,13 @@ class ProductImage extends Model
         'image_type',
         'sort_order',
         'duration_ms',
+        'is_enabled',
     ];
 
     protected $casts = [
         'sort_order' => 'integer',
         'duration_ms' => 'integer',
+        'is_enabled' => 'boolean',
         'image_type' => ProductImageType::class,
     ];
 
@@ -46,6 +48,20 @@ class ProductImage extends Model
         $type = $type instanceof ProductImageType ? $type->value : $type;
 
         return $query->where('image_type', $type);
+    }
+
+    public function scopeEnabled(Builder $query): Builder
+    {
+        return $query->where('is_enabled', true);
+    }
+
+    public function shouldDisplay(): bool
+    {
+        $type = $this->image_type instanceof ProductImageType
+            ? $this->image_type
+            : ProductImageType::tryFrom($this->image_type);
+
+        return $type === ProductImageType::COVER || $this->is_enabled;
     }
 
     public function scopeOrdered(Builder $query): Builder

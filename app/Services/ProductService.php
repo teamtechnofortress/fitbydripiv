@@ -272,6 +272,26 @@ class ProductService
         });
     }
 
+    public function setProductImageEnabled(Product|string $product, string $imageId, bool $isEnabled): ProductImage
+    {
+        return DB::transaction(function () use ($product, $imageId, $isEnabled) {
+            $product = $this->resolveProduct($product);
+
+            $image = $product->images()
+                ->where('id', $imageId)
+                ->firstOrFail();
+
+            $imageType = $image->image_type instanceof ProductImageType
+                ? $image->image_type
+                : ProductImageType::tryFrom($image->image_type);
+
+            $image->is_enabled = $imageType === ProductImageType::COVER ? true : $isEnabled;
+            $image->save();
+
+            return $image->fresh();
+        });
+    }
+
     public function addProductBenefits(Product|string $product, array $benefits): Product
     {
         return DB::transaction(function () use ($product, $benefits) {
@@ -384,6 +404,9 @@ class ProductService
                 'duration_ms' => ($imageData['image_type'] ?? null) === ProductImageType::PRODUCT_DETAIL_MAIN->value
                     ? ($imageData['duration_ms'] ?? null)
                     : null,
+                'is_enabled' => ($imageData['image_type'] ?? null) === ProductImageType::COVER->value
+                    ? true
+                    : ($imageData['is_enabled'] ?? true),
             ]);
 
             if (($imageData['image_type'] ?? null) === ProductImageType::COVER->value) {

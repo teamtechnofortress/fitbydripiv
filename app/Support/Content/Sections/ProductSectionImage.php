@@ -6,6 +6,7 @@ use App\enums\ProductImageType;
 use App\enums\SectionType;
 use App\Models\Product;
 use App\Models\ProductImage;
+use Illuminate\Support\Collection;
 
 class ProductSectionImage
 {
@@ -30,6 +31,44 @@ class ProductSectionImage
         return $product->getImageByTypeOrCover(static::imageTypeForSection($sectionType));
     }
 
+    public static function resolveGalleryForSection(Product $product, SectionType|string|null $sectionType): array
+    {
+        $product->loadMissing(['coverImage', 'images']);
+
+        $type = static::imageTypeForSection($sectionType);
+        $images = static::enabledImagesOfType($product->images, $type)
+            ->map(fn (ProductImage $image) => static::serialize($image))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($images !== []) {
+            return $images;
+        }
+
+        $fallback = static::serialize($product->coverImage);
+
+        return $fallback ? [$fallback] : [];
+    }
+
+    protected static function enabledImagesOfType(Collection $images, ProductImageType $type): Collection
+    {
+        return $images
+            ->filter(function (ProductImage $image) use ($type) {
+                $imageType = $image->image_type instanceof ProductImageType
+                    ? $image->image_type
+                    : ProductImageType::tryFrom($image->image_type);
+
+                if ($imageType !== $type) {
+                    return false;
+                }
+
+                return $image->shouldDisplay();
+            })
+            ->sortBy('sort_order')
+            ->values();
+    }
+
     public static function serialize(?ProductImage $image): ?array
     {
         if (! $image) {
@@ -44,6 +83,7 @@ class ProductSectionImage
                 : $image->image_type,
             'sort_order' => $image->sort_order,
             'duration_ms' => $image->duration_ms,
+            'is_enabled' => $image->is_enabled,
         ];
     }
 }
